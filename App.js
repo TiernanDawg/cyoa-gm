@@ -76,9 +76,13 @@ function readableError(error) {
 }
 
 export default function App() {
+  const [initialPlaythrough] = useState(() => {
+    const style = chooseRandomStyle();
+    return { style, opening: openingFor(style) };
+  });
   const [state, setState] = useState(() => createInitialState());
-  const [activeStoryStyle, setActiveStoryStyle] = useState(() => chooseRandomStyle());
-  const [sceneText, setSceneText] = useState(() => openingFor(chooseRandomStyle()));
+  const [activeStoryStyle, setActiveStoryStyle] = useState(initialPlaythrough.style);
+  const [sceneText, setSceneText] = useState(initialPlaythrough.opening);
   const [custom, setCustom] = useState('');
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -143,8 +147,6 @@ export default function App() {
     const saved = { ...draftConfig, model: modelValue || defaultModelFor(draftConfig.provider) };
     setConfig(saved);
     setDraftConfig(saved);
-    const style = saved.storyStyle === 'random' ? chooseRandomStyle() : saved.storyStyle;
-    setActiveStoryStyle(style);
     setShowSettings(false);
     setModelDropdownOpen(false);
     setStyleDropdownOpen(false);
@@ -465,7 +467,7 @@ export default function App() {
                 </TouchableOpacity>
               ))}
             </View>}
-            <Text style={styles.hint}>Random mode chooses a different tone for each new story. The four built-in openings vary the scene even without AI; live AI builds a fresh opening and rewrites later consequences in that tone.</Text>
+            <Text style={styles.hint}>Random mode chooses a different tone and opening for each new story. Story-style changes take effect when you start a new story. A custom premise guides the AI opening and later consequences; without AI, the built-in game remains playable.</Text>
 
             <Text style={styles.label}>Custom premise or story direction (optional)</Text>
             <TextInput
