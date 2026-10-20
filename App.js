@@ -99,7 +99,7 @@ export default function App() {
     const options = modelsFor(config.provider);
     const isCustom = !options.some(item => item.value === config.model);
     setDraftConfig({ ...config });
-    setCustomModelMode(config.provider === 'compatible' && (isCustom || !config.model));
+    setCustomModelMode(config.provider !== 'google' && (isCustom || !config.model));
     setCustomModelText(isCustom ? config.model : '');
     setModelDropdownOpen(false);
     setStyleDropdownOpen(false);
