@@ -15,6 +15,8 @@ export default function App() {
   const [model, setModel] = useState('gemini-2.5-flash');
   const [endpoint, setEndpoint] = useState('https://api.openai.com/v1/chat/completions');
   const [showSettings, setShowSettings] = useState(false);
+  const [lastRoll, setLastRoll] = useState(null);
+  const [aiStatus, setAiStatus] = useState('');
   const node = getCurrentNode(state);
 
   async function showScene(nextState, nextNodeId, action, outcome = '') {
@@ -29,6 +31,7 @@ export default function App() {
   async function onChoice(choice) {
     if (busy) return;
     const { state: next, roll, nextNodeId } = applyChoice(state, choice);
+    setLastRoll(roll ? { ...roll, dc: choice.dc, stat: choice.stat } : null);
     const outcome = roll ? `d20 ${roll.raw} + ${roll.modifier} = ${roll.total} (DC ${roll.dc}): ${roll.outcome.replaceAll('_', ' ')}.` : '';
     await showScene(next, nextNodeId, choice.text, outcome);
   }
@@ -37,6 +40,7 @@ export default function App() {
     if (!action || busy) return;
     const result = resolveCustomAction(state, action);
     if (!result) return;
+    setLastRoll(result.roll ? { ...result.roll, dc: result.state.history[result.state.history.length - 1]?.roll?.dc || 13, stat: /look|listen|search|feel|study|inspect|examine|read|smell|wait|hide|think|remember/i.test(action) ? 'sanity' : 'health' } : null);
     setCustom('');
     setBusy(true);
     setState(result.state);
@@ -69,14 +73,32 @@ export default function App() {
   }
   function restart() {
     const fresh = createInitialState();
-    setState(fresh); setSceneText(getCurrentNode(fresh).scene); setCustom('');
+    setState(fresh); setSceneText(getCurrentNode(fresh).scene); setCustom(''); setLastRoll(null); setAiStatus('');
   }
+  async function testAI() {
+    if (!apiKey.trim()) { setAiStatus('Enter your API key first.'); return; }
+    setAiStatus('Testing connection…');
+    try {
+      const { testConnection } = await import('./src/llm/narrator');
+      await testConnection(apiKey, model, provider, endpoint);
+      setAiStatus('Connection successful. AI is responding.');
+    } catch (error) {
+      setAiStatus('Connection failed: ' + (error?.message || 'Unknown error'));
+    }
+  }
+
+  const healthLevel = ({ Full: 4, Hurt: 3, Critical: 1, Dead: 0 })[state.health] ?? 0;
+  const sanityLevel = ({ Steady: 4, Rattled: 3, Breaking: 1, Lost: 0 })[state.sanity] ?? 0;
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>CYOA GM</Text>
-        <Text style={styles.subtitle}>A grounded horror story. Your choices have consequences.</Text>
+        <View style={styles.masthead}>
+          <Text style={styles.eyebrow}>FIELD NOTES · UNKNOWN LOCATION</Text>
+          <Text style={styles.title}>THE DARK BELOW</Text>
+          <Text style={styles.subtitle}>A survival record. Every choice leaves a mark.</Text>
+        </View>
         <View style={styles.toolbar}>
           <TouchableOpacity onPress={() => setShowSettings(!showSettings)} style={styles.smallButton}><Text style={styles.smallButtonText}>AI settings</Text></TouchableOpacity>
           <TouchableOpacity onPress={restart} style={styles.smallButton}><Text style={styles.smallButtonText}>Restart</Text></TouchableOpacity>
@@ -107,10 +129,29 @@ export default function App() {
             <Text style={styles.label}>Chat Completions endpoint</Text>
             <TextInput style={styles.input} value={endpoint} onChangeText={setEndpoint} placeholder="https://api.openai.com/v1/chat/completions" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false}/>
           </>}
+          <TouchableOpacity style={styles.testButton} onPress={testAI} disabled={busy}><Text style={styles.testButtonText}>Test AI connection</Text></TouchableOpacity>
+          {!!aiStatus && <Text style={styles.aiStatus}>{aiStatus}</Text>}
           <Text style={styles.hint}>Google Gemini uses a Google AI Studio key. OpenRouter uses an OpenRouter key. OpenAI-compatible lets you enter a key, model, and endpoint for providers implementing Chat Completions. The key stays in app memory for this session and is not saved to GitHub. Requests send story context and actions to the selected provider; usage limits or charges may apply.</Text>
         </View>}
-        <Text style={styles.scene}>{busy ? 'The story is unfolding…' : sceneText}</Text>
-        <Text style={styles.status}>Health: {state.health}  |  Sanity: {state.sanity}{state.inventory.length ? `\nInventory: ${state.inventory.join(', ')}` : ''}</Text>
+        <View style={styles.statusPanel}>
+          <View style={styles.statCard}>
+            <View style={styles.statHeading}><Text style={styles.statGlyph}>♥</Text><Text style={styles.statLabel}>VITALITY</Text></View>
+            <Text style={styles.statValue}>{state.health.toUpperCase()}</Text>
+            <View style={styles.meter}>{[0,1,2,3].map(i => <View key={i} style={[styles.meterSegment, i < healthLevel && styles.healthOn]} />)}</View>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statHeading}><Text style={styles.sanityGlyph}>◉</Text><Text style={styles.statLabel}>SANITY</Text></View>
+            <Text style={styles.statValue}>{state.sanity.toUpperCase()}</Text>
+            <View style={styles.meter}>{[0,1,2,3].map(i => <View key={i} style={[styles.meterSegment, i < sanityLevel && styles.sanityOn]} />)}</View>
+          </View>
+        </View>
+        {!!state.inventory.length && <Text style={styles.inventory}>CARRIED: {state.inventory.join('  ·  ').toUpperCase()}</Text>}
+        {lastRoll && <View style={styles.rollPanel}>
+          <Text style={styles.rollEyebrow}>FATE / D20 CHECK</Text>
+          <View style={styles.rollRow}><Text style={styles.die}>D20</Text><View style={styles.rollNumbers}><Text style={styles.rollTotal}>{lastRoll.total}</Text><Text style={styles.rollFormula}>d20 {lastRoll.raw} {lastRoll.modifier >= 0 ? '+' : '−'} {Math.abs(lastRoll.modifier || 0)}  ·  TARGET {lastRoll.dc}</Text></View></View>
+          <Text style={styles.rollOutcome}>{String(lastRoll.outcome || 'resolved').replaceAll('_', ' ').toUpperCase()}</Text>
+        </View>}
+        <View style={styles.sceneFrame}><Text style={styles.sceneKicker}>TRANSCRIPTION / {String(state.nodeId || 'UNKNOWN').replaceAll('_',' ').toUpperCase()}</Text><Text style={styles.scene}>{busy ? 'The story is unfolding…' : sceneText}</Text></View>
         {node?.choices?.map((choice, i) => <TouchableOpacity key={i} style={styles.choice} onPress={() => onChoice(choice)} disabled={busy}>
           <Text style={styles.choiceText}>{i + 1}. {choice.text}</Text>
         </TouchableOpacity>)}
@@ -128,12 +169,43 @@ export default function App() {
   );
 }
 const styles = StyleSheet.create({
-  container:{flex:1,backgroundColor:'#09090b'}, scroll:{padding:20,paddingBottom:48},
-  title:{color:'#f1f1f3',fontSize:30,fontWeight:'800',letterSpacing:1}, subtitle:{color:'#9a9aa4',fontSize:13,marginTop:4,marginBottom:16},
-  toolbar:{flexDirection:'row',gap:10,marginBottom:14}, providerRow:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:8}, providerButton:{backgroundColor:'#25252b',paddingVertical:8,paddingHorizontal:10,borderRadius:8,borderWidth:1,borderColor:'#303038'},providerButtonActive:{backgroundColor:'#45404f',borderColor:'#a898ec'}, smallButton:{backgroundColor:'#25252b',paddingVertical:9,paddingHorizontal:13,borderRadius:8},smallButtonText:{color:'#eee',fontWeight:'600'},
-  settings:{backgroundColor:'#151519',padding:14,borderRadius:10,marginBottom:18,borderWidth:1,borderColor:'#303038'},switchRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},label:{color:'#ddd',fontSize:14,fontWeight:'600',marginTop:8,marginBottom:7},
-  hint:{color:'#92929c',fontSize:12,lineHeight:18,marginBottom:8},scene:{color:'#e3e3e7',fontSize:17,lineHeight:27,marginTop:8,marginBottom:20},
-  status:{color:'#aaaab4',fontSize:13,lineHeight:20,marginBottom:16},choice:{backgroundColor:'#19191f',borderRadius:9,padding:15,marginBottom:10,borderWidth:1,borderColor:'#303039'},choiceText:{color:'#f0f0f3',fontSize:15,lineHeight:22},
-  customRow:{flexDirection:'row',alignItems:'stretch',gap:8,marginTop:5},input:{flex:1,backgroundColor:'#17171c',color:'#f0f0f3',padding:12,borderRadius:8,borderWidth:1,borderColor:'#34343d',minHeight:44},customBtn:{backgroundColor:'#45404f',borderRadius:8,paddingHorizontal:17,justifyContent:'center'},customBtnText:{color:'#fff',fontWeight:'700'},
-  footer:{color:'#72727d',fontSize:12,lineHeight:18,marginTop:24}
+  container:{flex:1,backgroundColor:'#11100e'}, scroll:{padding:18,paddingBottom:48},
+  masthead:{backgroundColor:'#1b1916',borderWidth:1,borderColor:'#514638',padding:18,marginBottom:16,shadowColor:'#000',shadowOpacity:0.45,shadowRadius:8},
+  eyebrow:{color:'#a58d66',fontSize:10,fontWeight:'800',letterSpacing:2,marginBottom:8},
+  title:{color:'#e8ddc7',fontSize:27,fontWeight:'900',letterSpacing:2},
+  subtitle:{color:'#a99d88',fontSize:12,marginTop:6,lineHeight:18},
+  toolbar:{flexDirection:'row',gap:9,marginBottom:14},
+  providerRow:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:8},
+  providerButton:{backgroundColor:'#27231e',paddingVertical:8,paddingHorizontal:10,borderRadius:3,borderWidth:1,borderColor:'#4b4134'},
+  providerButtonActive:{backgroundColor:'#51412c',borderColor:'#c5a56a'},
+  smallButton:{backgroundColor:'#2a2620',paddingVertical:9,paddingHorizontal:13,borderRadius:3,borderWidth:1,borderColor:'#61513a'},
+  smallButtonText:{color:'#e5d8bf',fontWeight:'700',fontSize:12},
+  settings:{backgroundColor:'#1b1916',padding:14,borderRadius:3,marginBottom:18,borderWidth:1,borderColor:'#514638'},
+  switchRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+  label:{color:'#d8cbb4',fontSize:13,fontWeight:'700',marginTop:8,marginBottom:7},
+  hint:{color:'#a39987',fontSize:12,lineHeight:18,marginBottom:8},
+  input:{flex:1,backgroundColor:'#12110f',color:'#eee2cc',padding:12,borderRadius:3,borderWidth:1,borderColor:'#544733',minHeight:44},
+  testButton:{backgroundColor:'#5a472d',borderColor:'#b59863',borderWidth:1,padding:11,alignItems:'center',marginVertical:8},
+  testButtonText:{color:'#f0e4cb',fontWeight:'800',letterSpacing:1},
+  aiStatus:{color:'#d9c59f',fontSize:12,lineHeight:18,marginBottom:8},
+  statusPanel:{flexDirection:'row',gap:10,marginBottom:10},
+  statCard:{flex:1,backgroundColor:'#211e19',borderWidth:1,borderColor:'#62513a',padding:12},
+  statHeading:{flexDirection:'row',alignItems:'center',gap:7},
+  statGlyph:{color:'#b56d61',fontSize:18,fontWeight:'900'}, sanityGlyph:{color:'#b5a3d2',fontSize:18,fontWeight:'900'},
+  statLabel:{color:'#b8a98e',fontSize:10,fontWeight:'900',letterSpacing:1.5},
+  statValue:{color:'#eee1c7',fontSize:12,fontWeight:'900',letterSpacing:1,marginTop:7,marginBottom:10},
+  meter:{flexDirection:'row',gap:4}, meterSegment:{flex:1,height:7,backgroundColor:'#494239',borderWidth:1,borderColor:'#625543'},
+  healthOn:{backgroundColor:'#a34f43',borderColor:'#c77c68'}, sanityOn:{backgroundColor:'#8270a2',borderColor:'#b1a0d0'},
+  inventory:{color:'#b5a588',fontSize:10,letterSpacing:1.2,marginBottom:14},
+  rollPanel:{backgroundColor:'#1d1a16',borderWidth:1,borderColor:'#8b7045',padding:14,marginBottom:14},
+  rollEyebrow:{color:'#c2a36d',fontSize:10,fontWeight:'900',letterSpacing:2,marginBottom:10},
+  rollRow:{flexDirection:'row',alignItems:'center',gap:14}, die:{color:'#e4d2ad',fontSize:22,fontWeight:'900',borderWidth:1,borderColor:'#9d8151',padding:10,textAlign:'center'},
+  rollNumbers:{flex:1}, rollTotal:{color:'#f0e0bf',fontSize:30,fontWeight:'900'},
+  rollFormula:{color:'#a99a80',fontSize:10,letterSpacing:1,marginTop:2}, rollOutcome:{color:'#d5bd8b',fontSize:12,fontWeight:'900',letterSpacing:1,marginTop:10},
+  sceneFrame:{backgroundColor:'#d5c6a6',borderColor:'#7e6b4d',borderWidth:2,padding:17,marginBottom:18,shadowColor:'#000',shadowOpacity:0.45,shadowRadius:8},
+  sceneKicker:{color:'#766348',fontSize:9,fontWeight:'900',letterSpacing:1.5,marginBottom:12}, scene:{color:'#29251f',fontSize:16,lineHeight:25},
+  choice:{backgroundColor:'#24211c',borderRadius:2,padding:14,marginBottom:9,borderWidth:1,borderColor:'#5c4d39'}, choiceText:{color:'#e5d8bf',fontSize:14,lineHeight:21},
+  customRow:{flexDirection:'row',alignItems:'stretch',gap:8,marginTop:5},
+  customBtn:{backgroundColor:'#6a5435',borderRadius:3,paddingHorizontal:17,justifyContent:'center',borderWidth:1,borderColor:'#b08e57'},customBtnText:{color:'#f5e8cd',fontWeight:'900'},
+  footer:{color:'#817867',fontSize:11,lineHeight:17,marginTop:24}
 });
