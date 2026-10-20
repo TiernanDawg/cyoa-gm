@@ -312,6 +312,14 @@ export default function App() {
     }
   }
 
+  function stopWaitingForAI() {
+    ++operationId.current;
+    Keyboard.dismiss();
+    setBusy(false);
+    const fallbackScene = getCurrentNode(state)?.scene || sceneText;
+    setSceneText(fallbackScene + '\n\n[AI response skipped. The built-in story remains playable.]');
+  }
+
   async function testAI() {
     if (testing) return;
     if (!draftConfig.apiKey.trim()) {
@@ -542,6 +550,7 @@ export default function App() {
             <Text style={styles.sceneKicker}>TRANSCRIPTION / {String(state.nodeId || 'UNKNOWN').replace(/_/g, ' ').toUpperCase()}</Text>
             {busy && <View style={styles.thinkingRow}><ActivityIndicator size="small" color="#8a6b3f" /><Text style={styles.thinkingText}>{config.aiEnabled ? 'Narrating consequences…' : 'Updating the record…'}</Text></View>}
             <Text style={styles.scene}>{sceneText}</Text>
+            {busy && config.aiEnabled && <TouchableOpacity style={styles.skipAIButton} onPress={stopWaitingForAI}><Text style={styles.skipAIButtonText}>STOP WAITING · USE BUILT-IN STORY</Text></TouchableOpacity>}
           </View>
 
           {node?.choices?.map((choice, i) => (
@@ -652,6 +661,8 @@ const styles = StyleSheet.create({
   scene: { color: '#29251f', fontSize: 16, lineHeight: 25 },
   thinkingRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
   thinkingText: { color: '#765c36', fontSize: 11, fontWeight: '700' },
+  skipAIButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#816d4e', paddingVertical: 9, paddingHorizontal: 10, marginTop: 13, backgroundColor: '#c3b18e' },
+  skipAIButtonText: { color: '#342b1d', fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
   choice: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#24211c', borderRadius: 2, paddingVertical: 13, paddingHorizontal: 12, marginBottom: 8, borderWidth: 1, borderColor: '#5c4d39', minHeight: 52 },
   choiceDisabled: { opacity: 0.5 },
   choiceIndex: { color: '#aa8b58', fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
