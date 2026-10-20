@@ -93,12 +93,14 @@ export default function App() {
         {node?.choices?.map((choice, i) => <TouchableOpacity key={i} style={styles.choice} onPress={() => onChoice(choice)} disabled={busy}>
           <Text style={styles.choiceText}>{i + 1}. {choice.text}</Text>
         </TouchableOpacity>)}
-        <Text style={styles.label}>Try any action</Text>
-        <Text style={styles.hint}>Examples: inspect the scratches, call into the darkness, test the wall for a hidden latch.</Text>
-        <View style={styles.customRow}>
-          <TextInput style={styles.input} placeholder="What do you want to do?" placeholderTextColor="#777" value={custom} onChangeText={setCustom} editable={!busy} multiline/>
-          <TouchableOpacity style={styles.customBtn} onPress={onCustom} disabled={busy}><Text style={styles.customBtnText}>Act</Text></TouchableOpacity>
-        </View>
+        {node?.choices?.length > 0 ? <>
+          <Text style={styles.label}>Try any action</Text>
+          <Text style={styles.hint}>Examples: inspect the scratches, call into the darkness, test the wall for a hidden latch.</Text>
+          <View style={styles.customRow}>
+            <TextInput style={styles.input} placeholder="What do you want to do?" placeholderTextColor="#777" value={custom} onChangeText={setCustom} editable={!busy} multiline/>
+            <TouchableOpacity style={styles.customBtn} onPress={onCustom} disabled={busy}><Text style={styles.customBtnText}>Act</Text></TouchableOpacity>
+          </View>
+        </> : <Text style={styles.hint}>The story has ended. Select Restart to begin again.</Text>}
         <Text style={styles.footer}>AI is optional. Prewritten scenes remain available when offline or when AI is disabled.</Text>
       </ScrollView>
     </SafeAreaView>
