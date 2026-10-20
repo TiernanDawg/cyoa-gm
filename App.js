@@ -32,7 +32,6 @@ const OPENROUTER_MODELS = [
 const COMPATIBLE_MODELS = [
   { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
   { label: 'GPT-4.1 mini', value: 'gpt-4.1-mini' },
-  { label: 'Custom model ID…', value: '__custom__' }
 ];
 const STORY_STYLES = [
   { label: 'Randomize on every new story', value: 'random' },
@@ -215,6 +214,11 @@ export default function App() {
     const savedConfig = config;
 
     try {
+      if (result.state.health === 'Dead' || result.state.sanity === 'Lost') {
+        const ending = getCurrentNode(result.state);
+        if (runId === operationId.current) setSceneText(ending?.scene || 'The record ends here.');
+        return;
+      }
       if (savedConfig.aiEnabled && savedConfig.apiKey.trim()) {
         setSceneText('The scene holds still for a moment as the consequences take shape…');
         const aiResult = await narrateFreeform(sourceScene, action, outcome, savedConfig.apiKey, savedConfig.model, {
@@ -344,7 +348,6 @@ export default function App() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           <View style={styles.masthead}>
             <Text style={styles.eyebrow}>FIELD NOTES · UNKNOWN LOCATION</Text>
