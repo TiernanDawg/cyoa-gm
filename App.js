@@ -27,7 +27,8 @@ const OPENROUTER_MODELS = [
   { label: 'OpenRouter Free · Auto', value: 'openrouter/free' },
   { label: 'Gemini 3.8 Flash', value: 'google/gemini-3.8-flash' },
   { label: 'Llama 3.3 70B Instruct', value: 'meta-llama/llama-3.3-70b-instruct' },
-  { label: 'Qwen3 30B A3B', value: 'qwen/qwen3-30b-a3b' }
+  { label: 'Qwen3 30B A3B', value: 'qwen/qwen3-30b-a3b' },
+  { label: 'Custom model ID…', value: '__custom__' }
 ];
 const COMPATIBLE_MODELS = [
   { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
@@ -139,7 +140,8 @@ export default function App() {
   function saveSettings() {
     const modelValue = customModelMode ? customModelText.trim() : draftConfig.model.trim();
     if (draftConfig.aiEnabled && !draftConfig.apiKey.trim()) {
-      setAiStatus('Settings saved, but live AI is enabled without an API key. Add the correct provider key to test or use AI narration.');
+      setAiStatus('Enter an API key for the selected provider before saving live AI settings.');
+      return;
     } else if (draftConfig.aiEnabled && !modelValue) {
       setAiStatus('Choose a model ID before enabling AI.');
       return;
@@ -421,10 +423,6 @@ export default function App() {
                   {draftConfig.model === item.value && <Text style={styles.checkmark}>✓</Text>}
                 </TouchableOpacity>
               ))}
-              {draftConfig.provider !== 'google' && <TouchableOpacity style={styles.dropdownOption} onPress={() => chooseModel('__custom__')}>
-                <Text style={styles.dropdownOptionText}>Custom model ID…</Text>
-                <Text style={styles.checkmark}>›</Text>
-              </TouchableOpacity>}
             </View>}
             {customModelMode && <TextInput
               style={styles.input}
