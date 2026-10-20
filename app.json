@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "CYOA GM",
+    "slug": "cyoa-gm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tiernan.cyoagm"
+    }
+  }
+}
