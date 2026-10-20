@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TouchableOpacity, TextInput, View, StyleSheet, Switch } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { createInitialState, getCurrentNode, applyChoice, resolveCustomAction } from './src/game/engine';
-import { narrate, narrateFreeform } from './src/llm/narrator';
+import { narrate, narrateFreeform, testConnection } from './src/llm/narrator';
 
 export default function App() {
   const [state, setState] = useState(() => createInitialState());
@@ -12,7 +12,7 @@ export default function App() {
   const [aiEnabled, setAiEnabled] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [provider, setProvider] = useState('google');
-  const [model, setModel] = useState('gemini-2.5-flash');
+  const [model, setModel] = useState('gemini-3.8-flash');
   const [endpoint, setEndpoint] = useState('https://api.openai.com/v1/chat/completions');
   const [showSettings, setShowSettings] = useState(false);
   const [lastRoll, setLastRoll] = useState(null);
@@ -79,7 +79,6 @@ export default function App() {
     if (!apiKey.trim()) { setAiStatus('Enter your API key first.'); return; }
     setAiStatus('Testing connection…');
     try {
-      const { testConnection } = await import('./src/llm/narrator');
       await testConnection(apiKey, model, provider, endpoint);
       setAiStatus('Connection successful. AI is responding.');
     } catch (error) {
@@ -114,7 +113,7 @@ export default function App() {
               { id: 'compatible', label: 'OpenAI-compatible' }
             ].map(item => <TouchableOpacity key={item.id} onPress={() => {
               setProvider(item.id);
-              if (item.id === 'google') setModel('gemini-2.5-flash');
+              if (item.id === 'google') setModel('gemini-3.8-flash');
               else if (item.id === 'openrouter') setModel('openrouter/free');
               else setModel('gpt-4o-mini');
             }} style={[styles.providerButton, provider === item.id && styles.providerButtonActive]}>
@@ -124,7 +123,7 @@ export default function App() {
           <Text style={styles.label}>API key</Text>
           <TextInput style={styles.input} value={apiKey} onChangeText={setApiKey} placeholder="Paste your provider's API key" placeholderTextColor="#777" secureTextEntry autoCapitalize="none" autoCorrect={false}/>
           <Text style={styles.label}>Model ID</Text>
-          <TextInput style={styles.input} value={model} onChangeText={setModel} placeholder={provider === 'google' ? 'gemini-2.5-flash' : provider === 'openrouter' ? 'openrouter/free' : 'gpt-4o-mini'} placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false}/>
+          <TextInput style={styles.input} value={model} onChangeText={setModel} placeholder={provider === 'google' ? 'gemini-3.8-flash' : provider === 'openrouter' ? 'openrouter/free' : 'gpt-4o-mini'} placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false}/>
           {provider === 'compatible' && <>
             <Text style={styles.label}>Chat Completions endpoint</Text>
             <TextInput style={styles.input} value={endpoint} onChangeText={setEndpoint} placeholder="https://api.openai.com/v1/chat/completions" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false}/>
