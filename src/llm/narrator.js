@@ -39,15 +39,25 @@ async function requestText(system, user, apiKey, model, provider, endpoint, maxT
     throw new Error(message);
   }
   if (provider === 'google') {
-    return (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts || [])
+    const candidate = data && data.candidates && data.candidates[0];
+    const text = (candidate && candidate.content && candidate.content.parts || [])
       .map(part => part.text || '').join('').trim();
+    if (!text) {
+      const blockReason = data && data.promptFeedback && data.promptFeedback.blockReason;
+      const finishReason = candidate && candidate.finishReason;
+      throw new Error(blockReason ? 'Google blocked this prompt: ' + blockReason : finishReason ? 'Google returned no text (finish reason: ' + finishReason + ').' : 'Google returned an empty response. Check the model ID and API key permissions.');
+    }
+    return text;
   }
-  return data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+  const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
     ? data.choices[0].message.content.trim() : '';
+  if (!text) throw new Error('The API returned no message content. Check the model ID and endpoint.');
+  return text;
 }
 
-function unavailable(scene) {
-  return scene + '\n\n(AI unavailable; continuing with the written story.)';
+function unavailable(scene, error) {
+  const detail = error ? ' Details: ' + String(error).replace(/https?:\/\/\S+/g, '[URL]').slice(0, 240) : '';
+  return scene + '\n\n(AI unavailable; continuing with the written story.' + detail + ')';
 }
 
 export async function narrate(scene, action, outcome, apiKey, model = 'gemini-2.5-flash', provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
@@ -55,8 +65,8 @@ export async function narrate(scene, action, outcome, apiKey, model = 'gemini-2.
   const p = prompts(scene, action, outcome);
   try {
     return await requestText(p.system, p.user, apiKey, model, provider, endpoint, 300, false) || scene;
-  } catch {
-    return unavailable(scene);
+  } catch (error) {
+    return unavailable(scene, error && error.message);
   }
 }
 
@@ -87,7 +97,16 @@ export async function narrateFreeform(scene, action, outcome, apiKey, model = 'g
     const narration = typeof parsed.narration === 'string' ? parsed.narration.trim() : '';
     const nextNodeId = validNodeIds.includes(parsed.nextNodeId) ? parsed.nextNodeId : state.nodeId;
     return { text: narration.slice(0, 1600) || fallback.text, nextNodeId };
-  } catch {
-    return fallback;
+  } catch (error) {
+    return { text: unavailable(scene, error && error.message), nextNodeId: state.nodeId };
   }
+}
+
+export async function testConnection(apiKey, model = 'gemini-2.5-flash', provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
+  const text = await requestText(
+    'You are a connection test. Reply with only the words: Connection successful.',
+    'Reply with: Connection successful.',
+    apiKey, model, provider, endpoint, 30, false
+  );
+  return text;
 }
