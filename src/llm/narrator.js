@@ -25,8 +25,8 @@ export async function narrate(scene, action, outcome, apiKey, model = 'openroute
  * invent node IDs or overwrite the deterministic dice/state engine.
  */
 export async function narrateFreeform(scene, action, outcome, apiKey, model = 'openrouter/free', state = {}) {
-  const fallback = { text: await narrate(scene, action, outcome, apiKey, model), nextNodeId: state.nodeId };
-  if (!apiKey?.trim()) return fallback;
+  const fallback = { text: scene + '\\n\\n(AI unavailable; continuing with the written story.)', nextNodeId: state.nodeId };
+  if (!apiKey?.trim()) return { text: scene, nextNodeId: state.nodeId };
   const validNodeIds = Object.keys(MAP);
   const system = `You are the game master for a branching, slow-burn horror adventure. Respond ONLY as one valid JSON object with exactly two keys: "narration" (string, 40-150 words, second person present tense) and "nextNodeId" (one string chosen exactly from the provided valid node IDs). Choose the most appropriate next location based on the player's action and the current situation. You may keep the player in the current node if the action would not change location. Never claim the dice result is different from the supplied result. Do not invent items, injuries, or facts. Do not include Markdown fences.`;
   const user = JSON.stringify({
