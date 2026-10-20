@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, TextInput, View, StyleSheet, Alert, Switch } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, TextInput, View, StyleSheet, Switch } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { createInitialState, getCurrentNode, applyChoice, resolveCustomAction } from './src/game/engine';
-import { resolveRoll, DC, HEALTH_MODIFIERS, SANITY_MODIFIERS } from './src/game/rules';
 import { narrate, narrateFreeform } from './src/llm/narrator';
 
 export default function App() {
@@ -16,14 +15,13 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const node = getCurrentNode(state);
 
-  async function showScene(nextState, nextNodeId, action, roll) {
+  async function showScene(nextState, nextNodeId, action, outcome = '') {
     setBusy(true);
     const updated = { ...nextState, nodeId: nextNodeId };
     setState(updated);
     const base = getCurrentNode(updated)?.scene || 'The path ends here.';
-    const outcome = roll ? `d20 ${roll.raw}, total ${roll.total}, ${roll.outcome}` : '';
-    const text = aiEnabled ? await narrate(base, action, outcome, apiKey, model) : base;
-    setSceneText(text);
+    const narrated = aiEnabled && apiKey.trim() ? await narrate(base, action, outcome, apiKey, model) : base;
+    setSceneText(outcome ? `${narrated}\n\n${outcome}` : narrated);
     setBusy(false);
   }
   async function onChoice(choice) {
