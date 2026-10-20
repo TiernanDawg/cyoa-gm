@@ -296,7 +296,7 @@ export default function App() {
         if (runId === operationId.current) setSceneText(generated);
       } catch (error) {
         if (runId === operationId.current) {
-          setSceneText(openingFor(style) + '\n\n[Using the built-in opening because AI generation failed. ' + readableError(error) + ']');
+          setSceneText(openingFor(style) + '\n\n[Using the built-in opening because AI generation failed. ' + readableError(error, config.apiKey) + ']');
         }
       } finally {
         if (runId === operationId.current) setBusy(false);
@@ -368,6 +368,8 @@ export default function App() {
               <Text style={styles.smallButtonText}>New story</Text>
             </TouchableOpacity>
           </View>
+
+          {!showSettings && !!aiStatus && <Text style={styles.aiStatus}>{aiStatus}</Text>}
 
           {showSettings && <View style={styles.settings}>
             <Text style={styles.panelTitle}>NARRATIVE ENGINE</Text>
