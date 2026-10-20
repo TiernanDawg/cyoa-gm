@@ -97,14 +97,19 @@ async function requestText(system, user, apiKey, model, provider, endpoint, maxT
   let response;
   let rawBody = '';
   try {
-    const fetchPromise = fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      ...(controller ? { signal: controller.signal } : {})
-    });
-    response = await Promise.race([fetchPromise, timeoutPromise]);
-    rawBody = await response.text();
+    const fetchAndReadPromise = (async () => {
+      const fetched = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        ...(controller ? { signal: controller.signal } : {})
+      });
+      const bodyText = await fetched.text();
+      return { fetched, bodyText };
+    })();
+    const result = await Promise.race([fetchAndReadPromise, timeoutPromise]);
+    response = result.fetched;
+    rawBody = result.bodyText;
   } catch (error) {
     if (error && error.message && /timed out after/.test(error.message)) throw error;
     if (error && error.name === 'AbortError') throw new Error('AI request was cancelled or timed out. You can keep playing; check your connection and try again.');
