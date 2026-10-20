@@ -71,8 +71,10 @@ function defaultModelFor(provider) {
 function openingFor(style) {
   return OPENING_VARIANTS[style] || OPENING_VARIANTS['Dark Folktale'];
 }
-function readableError(error) {
-  return String(error && error.message ? error.message : 'Unknown error').replace(/https?:\/\/\S+/g, '[URL]').slice(0, 260);
+function readableError(error, apiKey) {
+  let message = String(error && error.message ? error.message : 'Unknown error');
+  if (apiKey) message = message.split(apiKey).join('[API key hidden]');
+  return message.replace(/https?:\/\/\S+/g, '[URL]').slice(0, 260);
 }
 
 export default function App() {
@@ -174,7 +176,7 @@ export default function App() {
         if (runId === operationId.current) setSceneText(offlineResult);
       }
     } catch (error) {
-      if (runId === operationId.current) setSceneText(base + '\n\n[The written story continues. ' + readableError(error) + ']');
+      if (runId === operationId.current) setSceneText(base + '\n\n[The written story continues. ' + readableError(error, savedConfig.apiKey) + ']');
     } finally {
       if (runId === operationId.current) setBusy(false);
     }
@@ -258,7 +260,7 @@ export default function App() {
       }
     } catch (error) {
       if (runId === operationId.current) {
-        setSceneText((getCurrentNode(result.state)?.scene || sourceScene) + '\n\n[AI narration failed. The game remains playable. ' + readableError(error) + ']');
+        setSceneText((getCurrentNode(result.state)?.scene || sourceScene) + '\n\n[AI narration failed. The game remains playable. ' + readableError(error, config.apiKey) + ']');
       }
     } finally {
       if (runId === operationId.current) setBusy(false);
@@ -314,7 +316,7 @@ export default function App() {
       return;
     }
     setTesting(true);
-    setAiStatus('Testing connection (12-second limit)…');
+    setAiStatus('Testing connection (18-second limit)…');
     try {
       const responseText = await testConnection(
         draftConfig.apiKey,
@@ -324,7 +326,7 @@ export default function App() {
       );
       setAiStatus('Connection successful. ' + (responseText || 'The model returned a response.'));
     } catch (error) {
-      setAiStatus('Connection failed: ' + readableError(error));
+      setAiStatus('Connection failed: ' + readableError(error, draftConfig.apiKey));
     } finally {
       setTesting(false);
     }
@@ -490,7 +492,7 @@ export default function App() {
               {testing && <Text style={styles.testButtonText}>Testing…</Text>}
             </TouchableOpacity>
             {!!aiStatus && <Text style={styles.aiStatus}>{aiStatus}</Text>}
-            <Text style={styles.hint}>The connection test has a 12-second timeout. API requests time out instead of locking the game. API keys are not saved to GitHub or persistent storage. A client-side key can be extracted from an installed app, so keep this for personal use.</Text>
+            <Text style={styles.hint}>The connection test has an 18-second timeout. API requests time out instead of locking the game. Free-tier quotas or charges depend on your provider and account plan. API keys are not saved to GitHub or persistent storage. A client-side key can be extracted from an installed app, so keep this for personal use.</Text>
 
             <View style={styles.settingsActions}>
               <TouchableOpacity style={styles.saveButton} onPress={saveSettings}>
