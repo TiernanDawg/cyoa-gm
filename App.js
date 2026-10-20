@@ -113,6 +113,13 @@ export default function App() {
     setShowSettings(true);
   }
 
+  function closeSettingsDiscarding() {
+    Keyboard.dismiss();
+    setShowSettings(false);
+    setModelDropdownOpen(false);
+    setStyleDropdownOpen(false);
+  }
+
   function chooseProvider(provider) {
     setDraftConfig(previous => ({
       ...previous,
@@ -138,6 +145,7 @@ export default function App() {
   }
 
   function saveSettings() {
+    Keyboard.dismiss();
     const modelValue = customModelMode ? customModelText.trim() : draftConfig.model.trim();
     if (draftConfig.aiEnabled && !draftConfig.apiKey.trim()) {
       setAiStatus('Enter an API key for the selected provider before saving live AI settings.');
@@ -316,7 +324,7 @@ export default function App() {
       return;
     }
     setTesting(true);
-    setAiStatus('Testing connection (18-second limit)…');
+    setAiStatus('Testing connection (12-second limit)…');
     try {
       const responseText = await testConnection(
         draftConfig.apiKey,
@@ -361,7 +369,7 @@ export default function App() {
           </View>
 
           <View style={styles.toolbar}>
-            <TouchableOpacity onPress={() => showSettings ? setShowSettings(false) : openSettings()} style={styles.smallButton}>
+            <TouchableOpacity onPress={() => showSettings ? closeSettingsDiscarding() : openSettings()} style={styles.smallButton}>
               <Text style={styles.smallButtonText}>{showSettings ? 'Close settings' : 'AI & story settings'}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={restart} style={styles.smallButton} disabled={false}>
@@ -414,7 +422,7 @@ export default function App() {
             />
 
             <Text style={styles.label}>Model</Text>
-            <TouchableOpacity style={styles.dropdownButton} onPress={() => setModelDropdownOpen(value => !value)}>
+            <TouchableOpacity style={styles.dropdownButton} onPress={() => { Keyboard.dismiss(); setModelDropdownOpen(value => !value); }}>
               <Text style={styles.dropdownButtonText}>{selectedModelLabel}</Text>
               <Text style={styles.dropdownArrow}>{modelDropdownOpen ? '−' : '▾'}</Text>
             </TouchableOpacity>
@@ -452,7 +460,7 @@ export default function App() {
             </>}
 
             <Text style={styles.label}>Story style</Text>
-            <TouchableOpacity style={styles.dropdownButton} onPress={() => setStyleDropdownOpen(value => !value)}>
+            <TouchableOpacity style={styles.dropdownButton} onPress={() => { Keyboard.dismiss(); setStyleDropdownOpen(value => !value); }}>
               <Text style={styles.dropdownButtonText}>{selectedStyleLabel}</Text>
               <Text style={styles.dropdownArrow}>{styleDropdownOpen ? '−' : '▾'}</Text>
             </TouchableOpacity>
@@ -490,13 +498,13 @@ export default function App() {
               {testing && <Text style={styles.testButtonText}>Testing…</Text>}
             </TouchableOpacity>
             {!!aiStatus && <Text style={styles.aiStatus}>{aiStatus}</Text>}
-            <Text style={styles.hint}>The connection test has an 18-second timeout. API requests time out instead of locking the game. Free-tier quotas or charges depend on your provider and account plan. API keys are not saved to GitHub or persistent storage. A client-side key can be extracted from an installed app, so keep this for personal use.</Text>
+            <Text style={styles.hint}>The connection test has a 12-second timeout. API requests time out instead of locking the game. Free-tier quotas or charges depend on your provider and account plan. API keys are not saved to GitHub or persistent storage. A client-side key can be extracted from an installed app, so keep this for personal use.</Text>
 
             <View style={styles.settingsActions}>
               <TouchableOpacity style={styles.saveButton} onPress={saveSettings}>
                 <Text style={styles.saveButtonText}>SAVE & CLOSE SETTINGS</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowSettings(false)}>
+              <TouchableOpacity style={styles.cancelButton} onPress={closeSettingsDiscarding}>
                 <Text style={styles.cancelButtonText}>Discard edits</Text>
               </TouchableOpacity>
             </View>
