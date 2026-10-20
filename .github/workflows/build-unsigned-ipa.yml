@@ -22,27 +22,41 @@ jobs:
       - name: Build unsigned iOS app
         run: |
           # Use the top-level CocoaPods-integrated workspace, not the
-          # project.xcworkspace nested inside CYOAGM.xcodeproj.
+          # project.xcworkspace nested inside the .xcodeproj.
           WORKSPACE=$(find ios -maxdepth 1 -type d -name '*.xcworkspace' -print -quit)
-          if [ -z "$WORKSPACE" ]; then
-            echo "Could not find the CocoaPods workspace at ios/*.xcworkspace"
-            find ios -maxdepth 3 -name '*.xcworkspace' -print
+          PROJECT=$(find ios -maxdepth 1 -type d -name '*.xcodeproj' -print -quit)
+          if [ -z "$WORKSPACE" ] || [ -z "$PROJECT" ]; then
+            echo "Could not find the generated top-level iOS workspace/project"
+            find ios -maxdepth 3 \( -name '*.xcworkspace' -o -name '*.xcodeproj' \) -print
             exit 1
           fi
           if [ ! -d "ios/Pods/Pods.xcodeproj" ]; then
             echo "CocoaPods project was not generated at ios/Pods/Pods.xcodeproj"
             exit 1
           fi
+          APP_NAME=$(basename "$PROJECT" .xcodeproj)
           echo "Using CocoaPods workspace: $WORKSPACE"
-          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | awk '/Schemes:/{getline; gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print; exit}')
-          if [ -z "$SCHEME" ]; then echo "Could not detect Xcode scheme"; xcodebuild -list -workspace "$WORKSPACE"; exit 1; fi
-          echo "Using scheme: $SCHEME"
+          echo "Expected app scheme/target: $APP_NAME"
+          SCHEME_LIST=$(xcodebuild -list -workspace "$WORKSPACE" 2>&1)
+          if ! printf '%s\n' "$SCHEME_LIST" | grep -Eq "^[[:space:]]+${APP_NAME}[[:space:]]*$"; then
+            echo "Expected app scheme '$APP_NAME' was not found in the CocoaPods workspace."
+            printf '%s\n' "$SCHEME_LIST"
+            exit 1
+          fi
+          SCHEME="$APP_NAME"
+          echo "Building app scheme: $SCHEME"
           xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 2 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
-          APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)
-          test -n "$APP"
+          APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/$APP_NAME.app"
+          if [ ! -d "$APP" ]; then
+            echo "Xcode completed without producing the expected app bundle: $APP"
+            find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 2 -print 2>/dev/null || true
+            exit 1
+          fi
+          rm -rf Payload
           mkdir -p Payload
           cp -R "$APP" Payload/
           /usr/bin/zip -qry CYOA-GM-unsigned.ipa Payload
+          test -s CYOA-GM-unsigned.ipa
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
