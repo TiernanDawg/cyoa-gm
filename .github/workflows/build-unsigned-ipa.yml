@@ -21,7 +21,19 @@ jobs:
         run: npx expo prebuild --platform ios --clean
       - name: Build unsigned iOS app
         run: |
-          WORKSPACE=$(find ios -maxdepth 2 -name '*.xcworkspace' -print -quit)
+          # Use the top-level CocoaPods-integrated workspace, not the
+          # project.xcworkspace nested inside CYOAGM.xcodeproj.
+          WORKSPACE=$(find ios -maxdepth 1 -type d -name '*.xcworkspace' -print -quit)
+          if [ -z "$WORKSPACE" ]; then
+            echo "Could not find the CocoaPods workspace at ios/*.xcworkspace"
+            find ios -maxdepth 3 -name '*.xcworkspace' -print
+            exit 1
+          fi
+          if [ ! -d "ios/Pods/Pods.xcodeproj" ]; then
+            echo "CocoaPods project was not generated at ios/Pods/Pods.xcodeproj"
+            exit 1
+          fi
+          echo "Using CocoaPods workspace: $WORKSPACE"
           SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | awk '/Schemes:/{getline; gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print; exit}')
           if [ -z "$SCHEME" ]; then echo "Could not detect Xcode scheme"; xcodebuild -list -workspace "$WORKSPACE"; exit 1; fi
           echo "Using scheme: $SCHEME"
