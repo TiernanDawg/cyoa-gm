@@ -4,45 +4,83 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install dependencies
+
+      - name: Install JavaScript dependencies
         run: npm install
+
       - name: Generate native iOS project
-        run: npx expo prebuild --platform ios --clean
-      - name: Build unsigned iOS app
+        env:
+          CI: "1"
+        run: npx expo prebuild --platform ios --no-install --clean
+
+      - name: Install CocoaPods
+        working-directory: ios
+        env:
+          LANG: en_US.UTF-8
+        run: pod install
+
+      - name: Build the actual app scheme
+        shell: bash
         run: |
-          # Use the top-level CocoaPods-integrated workspace, not the
-          # project.xcworkspace nested inside CYOAGM.xcodeproj.
-          WORKSPACE=$(find ios -maxdepth 1 -type d -name '*.xcworkspace' -print -quit)
-          if [ -z "$WORKSPACE" ]; then
-            echo "Could not find the CocoaPods workspace at ios/*.xcworkspace"
+          set -euo pipefail
+          WORKSPACE="ios/CYOAGM.xcworkspace"
+          SCHEME="CYOAGM"
+
+          if [ ! -d "$WORKSPACE" ]; then
+            echo "::error::Expected workspace not found: $WORKSPACE"
             find ios -maxdepth 3 -name '*.xcworkspace' -print
             exit 1
           fi
-          if [ ! -d "ios/Pods/Pods.xcodeproj" ]; then
-            echo "CocoaPods project was not generated at ios/Pods/Pods.xcodeproj"
+
+          echo "Available workspace schemes:"
+          xcodebuild -list -workspace "$WORKSPACE"
+          if ! xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | grep -Eq "^[[:space:]]+$SCHEME[[:space:]]*$"; then
+            echo "::error::App scheme '$SCHEME' was not found. Refusing to build a CocoaPods dependency scheme."
             exit 1
           fi
-          echo "Using CocoaPods workspace: $WORKSPACE"
-          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | awk '/Schemes:/{getline; gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print; exit}')
-          if [ -z "$SCHEME" ]; then echo "Could not detect Xcode scheme"; xcodebuild -list -workspace "$WORKSPACE"; exit 1; fi
-          echo "Using scheme: $SCHEME"
-          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 2 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
-          APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)
-          test -n "$APP"
+
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+          APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/CYOAGM.app"
+          if [ ! -d "$APP" ]; then
+            echo "::error::Build succeeded but expected app bundle was not created: $APP"
+            find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 2 -print || true
+            exit 1
+          fi
+
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist"
           mkdir -p Payload
           cp -R "$APP" Payload/
           /usr/bin/zip -qry CYOA-GM-unsigned.ipa Payload
+          unzip -t CYOA-GM-unsigned.ipa
+
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
