@@ -3,7 +3,7 @@ import { SafeAreaView, ScrollView, Text, TouchableOpacity, TextInput, View, Styl
 import { StatusBar } from 'expo-status-bar';
 import { createInitialState, getCurrentNode, applyChoice, resolveCustomAction } from './src/game/engine';
 import { resolveRoll, DC, HEALTH_MODIFIERS, SANITY_MODIFIERS } from './src/game/rules';
-import { narrate } from './src/llm/narrator';
+import { narrate, narrateFreeform } from './src/llm/narrator';
 
 export default function App() {
   const [state, setState] = useState(() => createInitialState());
@@ -47,7 +47,13 @@ export default function App() {
     const destination = getCurrentNode(result.state);
     let text;
     if (aiEnabled && apiKey.trim()) {
-      text = await narrate(destination?.scene || sceneText, action, outcome, apiKey, model);
+      const aiResult = await narrateFreeform(node?.scene || sceneText, action, outcome, apiKey, model, { ...result.state, nodeId: state.nodeId });
+      const aiState = { ...result.state, nodeId: aiResult.nextNodeId || result.state.nodeId };
+      const history = [...aiState.history];
+      if (history.length) history[history.length - 1] = { ...history[history.length - 1], nodeId: aiState.nodeId };
+      aiState.history = history;
+      setState(aiState);
+      text = aiResult.text;
     } else if (result.matchedChoice) {
       text = destination?.scene || 'The path ends here.';
       if (outcome) text += `\n\n${outcome}`;
