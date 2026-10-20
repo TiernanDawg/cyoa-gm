@@ -286,7 +286,7 @@ export async function testConnection(
   const text = await requestText(
     'You are a connection test. Reply with only the exact words: Connection successful.',
     'Reply with: Connection successful.',
-    apiKey, model, provider, endpoint, 32, false, 12000
+    apiKey, model, provider, endpoint, 128, false, 18000
   );
   return text;
 }
