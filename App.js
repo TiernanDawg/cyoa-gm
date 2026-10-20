@@ -157,9 +157,7 @@ export default function App() {
   async function showScene(nextState, nextNodeId, action, outcome = '', runId) {
     const updated = { ...nextState, nodeId: nextNodeId };
     setState(updated);
-    const base = openingFor(activeStoryStyle) && updated.nodeId === 'start'
-      ? openingFor(activeStoryStyle)
-      : getCurrentNode(updated)?.scene || 'The path ends here.';
+    const base = getCurrentNode(updated)?.scene || 'The path ends here.';
     const savedConfig = config;
     try {
       if (savedConfig.aiEnabled && savedConfig.apiKey.trim()) {
