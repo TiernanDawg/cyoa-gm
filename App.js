@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, TextInput, View, StyleSheet, Alert, Switch } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, TextInput, View, StyleSheet, Switch } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { createInitialState, getCurrentNode, applyChoice } from './src/game/engine';
-import { resolveRoll, DC, HEALTH_MODIFIERS, SANITY_MODIFIERS } from './src/game/rules';
-import { narrate } from './src/llm/narrator';
+import { createInitialState, getCurrentNode, applyChoice, resolveCustomAction } from './src/game/engine';
+import { narrate, narrateFreeform } from './src/llm/narrator';
 
 export default function App() {
-  const [state, setState] = useState(createInitialState());
-  const [sceneText, setSceneText] = useState(getCurrentNode(createInitialState()).scene);
+  const [state, setState] = useState(() => createInitialState());
+  const [sceneText, setSceneText] = useState(() => getCurrentNode(createInitialState()).scene);
   const [custom, setCustom] = useState('');
   const [busy, setBusy] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -16,41 +15,53 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const node = getCurrentNode(state);
 
-  async function showScene(nextState, nextNodeId, action, roll) {
+  async function showScene(nextState, nextNodeId, action, outcome = '') {
     setBusy(true);
     const updated = { ...nextState, nodeId: nextNodeId };
     setState(updated);
     const base = getCurrentNode(updated)?.scene || 'The path ends here.';
-    const outcome = roll ? `d20 ${roll.raw}, total ${roll.total}, ${roll.outcome}` : '';
-    const text = aiEnabled ? await narrate(base, action, outcome, apiKey, model) : base;
-    setSceneText(text);
+    const narrated = aiEnabled && apiKey.trim() ? await narrate(base, action, outcome, apiKey, model) : base;
+    setSceneText(outcome ? `${narrated}\n\n${outcome}` : narrated);
     setBusy(false);
   }
   async function onChoice(choice) {
     if (busy) return;
     const { state: next, roll, nextNodeId } = applyChoice(state, choice);
-    if (next.health === 'Dead' || next.sanity === 'Lost') {
-      Alert.alert('The story ends', 'Your condition has reached its limit.');
-      return;
-    }
-    await showScene(next, nextNodeId, choice.text, roll);
+    const outcome = roll ? `d20 ${roll.raw} + ${roll.modifier} = ${roll.total} (DC ${roll.dc}): ${roll.outcome.replaceAll('_', ' ')}.` : '';
+    await showScene(next, nextNodeId, choice.text, outcome);
   }
   async function onCustom() {
     const action = custom.trim();
     if (!action || busy) return;
-    const looksLikeObservation = /look|listen|search|feel|study|inspect|examine|read|smell/i.test(action);
-    const stat = looksLikeObservation ? 'sanity' : 'health';
-    const mod = stat === 'health' ? (HEALTH_MODIFIERS[state.health] ?? 0) : (SANITY_MODIFIERS[state.sanity] ?? 0);
-    const roll = resolveRoll(DC.Moderate, mod);
-    const next = { ...state, turn: state.turn + 1, history: [...state.history, { action, outcome: roll.outcome }] };
+    const result = resolveCustomAction(state, action);
+    if (!result) return;
     setCustom('');
-    const currentScene = node?.scene || sceneText;
-    const outcome = `d20 ${roll.raw} + ${mod} = ${roll.total}; ${roll.outcome}. A custom action does not automatically succeed.`;
     setBusy(true);
-    const text = aiEnabled
-      ? await narrate(currentScene, action, outcome, apiKey, model)
-      : `You attempt: ${action}\n\nRoll: ${roll.raw} + ${mod} = ${roll.total}. Outcome: ${roll.outcome.replace('_',' ')}.\n\n${roll.outcome === 'success' || roll.outcome === 'critical_success' ? 'You find a plausible opportunity, but the story remains grounded in the situation.' : roll.outcome === 'partial_success' ? 'You make some progress, but there is a cost or complication.' : 'The attempt fails or creates a complication. You remain where you are.'}`;
-    setState(next);
+    setState(result.state);
+    const roll = result.roll;
+    const outcome = roll
+      ? `d20 ${roll.raw} + ${roll.modifier} = ${roll.total} against DC ${roll.dc}: ${roll.outcome.replaceAll('_', ' ')}.${result.matchedChoice ? ` The action corresponds to: ${result.matchedChoice}` : ' The action did not match a listed option, so the result may create a complication without changing location.'}`
+      : 'No roll was needed.';
+    const destination = getCurrentNode(result.state);
+    let text;
+    if (aiEnabled && apiKey.trim()) {
+      const aiResult = await narrateFreeform(node?.scene || sceneText, action, outcome, apiKey, model, { ...result.state, nodeId: state.nodeId });
+      const aiState = { ...result.state, nodeId: aiResult.nextNodeId || result.state.nodeId };
+      const history = [...aiState.history];
+      if (history.length) history[history.length - 1] = { ...history[history.length - 1], nodeId: aiState.nodeId };
+      aiState.history = history;
+      setState(aiState);
+      text = aiResult.text;
+    } else if (result.matchedChoice) {
+      text = destination?.scene || 'The path ends here.';
+      if (outcome) text += `\n\n${outcome}`;
+    } else {
+      const consequence = !roll ? 'You act, but nothing in the scene clearly changes yet.'
+        : ['success', 'critical_success'].includes(roll.outcome) ? 'You make progress, revealing a useful detail or opportunity.'
+        : roll.outcome === 'partial_success' ? 'You make some progress, but it comes with a cost or complication.'
+        : 'The attempt fails or creates a complication. The environment remains dangerous.';
+      text = `You attempt: ${action}\n\n${outcome}\n\n${consequence}\n\n${destination?.scene || sceneText}`;
+    }
     setSceneText(text);
     setBusy(false);
   }
@@ -82,12 +93,14 @@ export default function App() {
         {node?.choices?.map((choice, i) => <TouchableOpacity key={i} style={styles.choice} onPress={() => onChoice(choice)} disabled={busy}>
           <Text style={styles.choiceText}>{i + 1}. {choice.text}</Text>
         </TouchableOpacity>)}
-        <Text style={styles.label}>Try any action</Text>
-        <Text style={styles.hint}>Examples: inspect the scratches, call into the darkness, test the wall for a hidden latch.</Text>
-        <View style={styles.customRow}>
-          <TextInput style={styles.input} placeholder="What do you want to do?" placeholderTextColor="#777" value={custom} onChangeText={setCustom} editable={!busy} multiline/>
-          <TouchableOpacity style={styles.customBtn} onPress={onCustom} disabled={busy}><Text style={styles.customBtnText}>Act</Text></TouchableOpacity>
-        </View>
+        {node?.choices?.length > 0 ? <>
+          <Text style={styles.label}>Try any action</Text>
+          <Text style={styles.hint}>Examples: inspect the scratches, call into the darkness, test the wall for a hidden latch.</Text>
+          <View style={styles.customRow}>
+            <TextInput style={styles.input} placeholder="What do you want to do?" placeholderTextColor="#777" value={custom} onChangeText={setCustom} editable={!busy} multiline/>
+            <TouchableOpacity style={styles.customBtn} onPress={onCustom} disabled={busy}><Text style={styles.customBtnText}>Act</Text></TouchableOpacity>
+          </View>
+        </> : <Text style={styles.hint}>The story has ended. Select Restart to begin again.</Text>}
         <Text style={styles.footer}>AI is optional. Prewritten scenes remain available when offline or when AI is disabled.</Text>
       </ScrollView>
     </SafeAreaView>

@@ -91,7 +91,7 @@ export const MAP = {
     scene: 'The route leads to a narrow stair descending into a chamber lit by no visible source.',
     choices: [
       { text: 'Enter the chamber.', next: 'lantern' },
-      { text: 'Turn back.', next: 'start' },
+      { text: 'Follow the markings toward the exit.', next: 'ending_escape', dc: 13, stat: 'sanity' },
       { text: 'Mark the stair and continue.', next: 'descent' }
     ]
   },
@@ -107,9 +107,25 @@ export const MAP = {
     scene: 'You press your palm against the stone. Somewhere beneath the surface, something presses back.',
     choices: [
       { text: 'Pull your hand away.', next: 'start' },
-      { text: 'Press harder.', next: 'run', dc: 19, stat: 'sanity' },
+      { text: 'Press harder and enter the wall.', next: 'ending_truth', dc: 19, stat: 'sanity' },
       { text: 'Listen through the wall.', next: 'listen' }
     ]
+  },
+  ending_escape: {
+    scene: 'The markings lead to a narrow stairwell and, at its top, a rusted service hatch. You force it open into cold night air. For the first time in hours, the sky is where it belongs. You escape—but when you look back, the hatch is set into the side of an ordinary stone wall.',
+    choices: []
+  },
+  ending_truth: {
+    scene: 'The stone gives way like the surface of deep water. On the other side is the same corridor, seen from above, and a figure moving through it. It is you, carrying a lantern. The figure looks up. The wall closes between you, and the sound of your own footsteps begins again somewhere far below.',
+    choices: []
+  },
+  ending_dead: {
+    scene: 'Your body finally gives out. The corridor falls silent, then the tally marks begin to change. One is added. Whatever lives here has recorded your arrival—and your ending.',
+    choices: []
+  },
+  ending_lost: {
+    scene: 'You can no longer tell which sounds belong to the corridor and which come from inside your own head. The walls breathe in and out. Somewhere, a door opens. You follow it, though you cannot remember deciding to move.',
+    choices: []
   }
 };
 export function getNode(id) { return MAP[id] || null; }
