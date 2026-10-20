@@ -43,7 +43,7 @@ export function applyChoice(state, choice) {
   const mod = choice.stat === 'health'
     ? (HEALTH_MODIFIERS[next.health] ?? 0)
     : (SANITY_MODIFIERS[next.sanity] ?? 0);
-  const roll = choice.dc ? resolveRoll(choice.dc, mod) : null;
+  const roll = choice.dc ? { ...resolveRoll(choice.dc, mod), dc: choice.dc, modifier: mod } : null;
   applyRollConsequences(next, choice, roll);
   next.nodeId = next.health === 'Dead' ? 'ending_dead' : next.sanity === 'Lost' ? 'ending_lost' : choice.next;
   next.history.push({
@@ -88,7 +88,7 @@ export function resolveCustomAction(state, rawAction) {
   const observation = /look|listen|search|feel|study|inspect|examine|read|smell|wait|hide|think|remember/i.test(action);
   const stat = observation ? 'sanity' : 'health';
   const mod = stat === 'health' ? (HEALTH_MODIFIERS[state.health] ?? 0) : (SANITY_MODIFIERS[state.sanity] ?? 0);
-  const roll = resolveRoll(DC.Moderate, mod);
+  const roll = { ...resolveRoll(DC.Moderate, mod), dc: DC.Moderate, modifier: mod };
   const next = { ...state, turn: state.turn + 1, inventory: [...state.inventory], flags: { ...(state.flags || {}) }, history: [...state.history] };
   const pseudoChoice = { stat };
   applyRollConsequences(next, pseudoChoice, roll);
