@@ -13,7 +13,7 @@ async function requestText(system, user, apiKey, model, provider, endpoint, maxT
   if (!key) throw new Error('Missing API key');
   let url, headers, body;
   if (provider === 'google') {
-    const modelId = (model || 'gemini-2.5-flash').trim().replace(/^models\//, '');
+    const modelId = (model || 'gemini-3.8-flash').trim().replace(/^models\//, '');
     url = GEMINI_URL + '/' + encodeURIComponent(modelId) + ':generateContent';
     headers = { 'x-goog-api-key': key, 'Content-Type': 'application/json' };
     body = {
@@ -60,7 +60,7 @@ function unavailable(scene, error) {
   return scene + '\n\n(AI unavailable; continuing with the written story.' + detail + ')';
 }
 
-export async function narrate(scene, action, outcome, apiKey, model = 'gemini-2.5-flash', provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
+export async function narrate(scene, action, outcome, apiKey, model = 'gemini-3.8-flash', provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
   if (!apiKey || !apiKey.trim()) return scene;
   const p = prompts(scene, action, outcome);
   try {
@@ -74,7 +74,7 @@ export async function narrate(scene, action, outcome, apiKey, model = 'gemini-2.
  * The AI may choose a valid destination for a freeform action, but it cannot
  * invent node IDs or overwrite the deterministic dice/state engine.
  */
-export async function narrateFreeform(scene, action, outcome, apiKey, model = 'gemini-2.5-flash', state = {}, provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
+export async function narrateFreeform(scene, action, outcome, apiKey, model = 'gemini-3.8-flash', state = {}, provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
   const fallback = { text: unavailable(scene), nextNodeId: state.nodeId };
   if (!apiKey || !apiKey.trim()) return { text: scene, nextNodeId: state.nodeId };
   const validNodeIds = Object.keys(MAP);
@@ -102,7 +102,7 @@ export async function narrateFreeform(scene, action, outcome, apiKey, model = 'g
   }
 }
 
-export async function testConnection(apiKey, model = 'gemini-2.5-flash', provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
+export async function testConnection(apiKey, model = 'gemini-3.8-flash', provider = 'google', endpoint = 'https://api.openai.com/v1/chat/completions') {
   const text = await requestText(
     'You are a connection test. Reply with only the words: Connection successful.',
     'Reply with: Connection successful.',
