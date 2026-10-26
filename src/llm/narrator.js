@@ -1,7 +1,7 @@
 import { MAP } from '../game/map';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_GOOGLE_MODEL = 'gemini-3.8-flash';
+const DEFAULT_GOOGLE_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_REQUEST_TIMEOUT_MS = 18000;
 
 function cleanErrorMessage(error, apiKey) {
