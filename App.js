@@ -340,7 +340,8 @@ export default function App() {
         draftConfig.provider,
         draftConfig.endpoint
       );
-      setAiStatus('Connection successful. ' + (responseText || 'The model returned a response.'));
+      setDraftConfig(previous => ({ ...previous, aiEnabled: true }));
+      setAiStatus('Connection successful. Live AI is now enabled in these draft settings. Tap SAVE & CLOSE SETTINGS to apply them, then NEW STORY to generate an AI opening.');
     } catch (error) {
       setAiStatus('Connection failed: ' + readableError(error, draftConfig.apiKey));
     } finally {
@@ -414,7 +415,7 @@ export default function App() {
               ))}
             </View>
 
-            <Text style={styles.label}>API key (kept in memory for this session)</Text>
+            <Text style={styles.label}>Google AI Studio API key (kept in memory for this session)</Text>
             <TextInput
               style={styles.input}
               value={draftConfig.apiKey}
@@ -428,6 +429,7 @@ export default function App() {
               autoComplete="off"
               returnKeyType="done"
             />
+            {draftConfig.provider === 'google' && <Text style={styles.hint}>Use a key created in Google AI Studio. Its API restrictions must allow the Gemini API (Generative Language API). Do not paste the key into chat or GitHub.</Text>}
 
             <Text style={styles.label}>Model</Text>
             <TouchableOpacity style={styles.dropdownButton} onPress={() => { Keyboard.dismiss(); setModelDropdownOpen(value => !value); }}>
