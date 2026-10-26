@@ -63,7 +63,11 @@ async function requestText(system, user, apiKey, model, provider, endpoint, maxT
         temperature: 0.8,
         maxOutputTokens: maxTokens,
         ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
-        ...(modelId.startsWith('gemini-3.') ? { thinkingConfig: { thinkingLevel: 'low' } } : {})
+        ...(modelId.startsWith('gemini-3.5-flash-lite')
+          ? { thinkingConfig: { thinkingLevel: 'minimal' } }
+          : modelId.startsWith('gemini-3.')
+            ? { thinkingConfig: { thinkingLevel: 'low' } }
+            : {})
       }
     };
   } else {
@@ -286,7 +290,7 @@ export async function testConnection(
   const text = await requestText(
     'You are a connection test. Reply with only the exact words: Connection successful.',
     'Reply with: Connection successful.',
-    apiKey, model, provider, endpoint, 256, false, 12000
+    apiKey, model, provider, endpoint, 512, false, 12000
   );
   return text;
 }
