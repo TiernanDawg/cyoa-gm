@@ -9,7 +9,7 @@ A portrait iPhone choose-your-own-adventure horror game with branching scenes, l
 3. Select a model from the dropdown, enter your key, then tap **TEST AI CONNECTION**.
 4. Tap **SAVE & CLOSE SETTINGS**, then choose **New story** to generate an AI-written opening.
 
-Google Gemini is the default provider, using the currently documented stable model `gemini-3.8-flash`. Create a key with [Google AI Studio](https://aistudio.google.com/api-keys). OpenRouter and custom OpenAI Chat Completions-compatible endpoints are also supported. Keys are provider-specific; a Google key will not work with OpenRouter or another provider.
+Google Gemini is the default provider. The default model is `gemini-3.5-flash-lite`, selected as a lightweight option for testing with a free Google AI Studio API key; `gemini-3.8-flash` and `gemini-3.6-flash` are also available in the model picker. Create a key with [Google AI Studio](https://aistudio.google.com/api-keys). Google’s free tier has model-specific rate limits and availability can vary by project; see the [official Gemini API pricing and free-tier details](https://ai.google.dev/gemini-api/docs/pricing). OpenRouter and custom OpenAI Chat Completions-compatible endpoints are also supported. Keys are provider-specific; a Google key will not work with OpenRouter or another provider.
 
 The connection test has a 12-second timeout and narration requests have an 18-second timeout. While narration is pending, **STOP WAITING · USE BUILT-IN STORY** returns you to the built-in scene immediately. A late AI response cannot overwrite a newer action. Network issues, invalid keys, unsupported model IDs and provider quota limits can still prevent live AI from responding.
 
