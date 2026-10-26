@@ -18,10 +18,10 @@ import { createInitialState, getCurrentNode, applyChoice, resolveCustomAction } 
 import { narrate, narrateFreeform, generateOpening, testConnection } from './src/llm/narrator';
 
 const GOOGLE_MODELS = [
-  { label: 'Gemini 3.8 Flash · Recommended', value: 'gemini-3.8-flash' },
+  { label: 'Gemini 3.5 Flash-Lite · Free-tier friendly', value: 'gemini-3.5-flash-lite' },
+  { label: 'Gemini 3.8 Flash · Higher capability', value: 'gemini-3.8-flash' },
   { label: 'Gemini 3.6 Flash', value: 'gemini-3.6-flash' },
-  { label: 'Gemini 3.5 Flash-Lite', value: 'gemini-3.5-flash-lite' },
-  { label: 'Gemini 2.5 Flash · Legacy', value: 'gemini-2.5-flash' }
+  { label: 'Gemini 2.5 Flash · Legacy (may be restricted)', value: 'gemini-2.5-flash' }
 ];
 const OPENROUTER_MODELS = [
   { label: 'OpenRouter Free · Auto', value: 'openrouter/free' },
@@ -52,7 +52,7 @@ const DEFAULT_CONFIG = {
   aiEnabled: false,
   apiKey: '',
   provider: 'google',
-  model: 'gemini-3.8-flash',
+  model: 'gemini-3.5-flash-lite',
   endpoint: 'https://api.openai.com/v1/chat/completions',
   storyStyle: 'random',
   customPremise: ''
@@ -67,7 +67,7 @@ function modelsFor(provider) {
   return COMPATIBLE_MODELS;
 }
 function defaultModelFor(provider) {
-  return provider === 'google' ? 'gemini-3.8-flash' : provider === 'openrouter' ? 'openrouter/free' : 'gpt-4o-mini';
+  return provider === 'google' ? 'gemini-3.5-flash-lite' : provider === 'openrouter' ? 'openrouter/free' : 'gpt-4o-mini';
 }
 function openingFor(style) {
   return OPENING_VARIANTS[style] || OPENING_VARIANTS['Dark Folktale'];
