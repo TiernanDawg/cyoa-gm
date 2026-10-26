@@ -60,7 +60,7 @@ async function requestText(system, user, apiKey, model, provider, endpoint, maxT
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: user }] }],
       generationConfig: {
-        temperature: 0.8,
+        ...(!modelId.startsWith('gemini-3.') ? { temperature: 0.8 } : {}),
         maxOutputTokens: maxTokens,
         ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
         ...(modelId.startsWith('gemini-3.5-flash-lite')
