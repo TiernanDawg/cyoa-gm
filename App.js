@@ -89,7 +89,7 @@ export default function App(){
  const offlineConsequence=outcome=>outcome.includes('success')?'You make progress, and a detail in the surroundings becomes clear.':outcome.includes('partial')?'You make some progress, but the effort costs time and leaves a complication.':'The attempt fails. The surroundings answer with a new, uncomfortable silence.';
  const choose=async choice=>{
    if(busy)return;tap();Keyboard.dismiss();const id=++op.current;setBusy(true);
-   const result=applyChoice(state,choice);const r=result.roll?{...result.roll,dc:choice.dc,modifier:result.roll.modifier,stat:choice.stat}:null;setRoll(r);setShowRoll(!!r);
+   const result=applyChoice(state,choice);if(result.state.flags?.inventoryFull)setStatus('Your pack is full (3/3). Drop or use an item before taking another.');else setStatus('');const r=result.roll?{...result.roll,dc:choice.dc,modifier:result.roll.modifier,stat:choice.stat}:null;setRoll(r);setShowRoll(!!r);
    const outcome=r?'D20 '+r.raw+' + '+r.modifier+' = '+r.total+' against target '+r.dc+': '+r.outcome+'.':'No roll was required.';
    if(r){setBusy(false);setPending({result,choice,outcome,id});}else await updateScene(result.state,result.nextNodeId,choice.text,outcome,id);
  };
@@ -100,7 +100,7 @@ export default function App(){
    const assessment=assessCustomAction(text,state,{difficulty:settings.difficulty});
    if(assessment.feasibility==='impossible'){setStatus(assessment.message);return;}
    setAction('');Keyboard.dismiss();tap();const id=++op.current;setBusy(true);
-   const result=resolveCustomAction(state,text,assessment);if(!result){setBusy(false);return;}
+   const result=resolveCustomAction(state,text,assessment);if(!result){setBusy(false);return;}if(result.state.flags?.inventoryFull)setStatus('Your pack is full (3/3). Drop or use an item before taking another.');
    if(result.roll){
      const odds=getOddsPercent(assessment.dc,assessment.modifier);
      result.roll={...result.roll,dc:assessment.dc,modifier:assessment.modifier,odds,assessment};
