@@ -2,10 +2,7 @@ name: Build unsigned iOS IPA
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  # Release builds are manually dispatched after the release checklist passes.
 
 jobs:
   build:
