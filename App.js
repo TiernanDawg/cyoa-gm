@@ -1,679 +1,138 @@
-import React, { useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  View,
-  StyleSheet,
-  Switch
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, BackHandler, Keyboard, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
+import Svg, { Circle, Defs, LinearGradient, Polygon, Stop, Text as SvgText } from 'react-native-svg';
 import { createInitialState, getCurrentNode, applyChoice, resolveCustomAction } from './src/game/engine';
 import { narrate, narrateFreeform, generateOpening, testConnection } from './src/llm/narrator';
+import { THEMES, MOTION } from './src/ui/theme';
+import { readSettings, writeSettings, readProfile, writeProfile, listSaves, saveRun, loadRun, clearAll } from './src/persistence/storage';
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
-const GOOGLE_MODELS = [
-  { label: 'Gemini 3.5 Flash-Lite · Free-tier friendly', value: 'gemini-3.5-flash-lite' },
-  { label: 'Gemini 3.8 Flash · Higher capability', value: 'gemini-3.8-flash' },
-  { label: 'Gemini 3.6 Flash', value: 'gemini-3.6-flash' },
-  { label: 'Gemini 2.5 Flash · Legacy (may be restricted)', value: 'gemini-2.5-flash' }
-];
-const OPENROUTER_MODELS = [
-  { label: 'OpenRouter Free · Auto', value: 'openrouter/free' },
-  { label: 'Gemini 3.8 Flash', value: 'google/gemini-3.8-flash' },
-  { label: 'Llama 3.3 70B Instruct', value: 'meta-llama/llama-3.3-70b-instruct' },
-  { label: 'Qwen3 30B A3B', value: 'qwen/qwen3-30b-a3b' },
-  { label: 'Custom model ID…', value: '__custom__' }
-];
-const COMPATIBLE_MODELS = [
-  { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
-  { label: 'GPT-4.1 mini', value: 'gpt-4.1-mini' },
-];
-const STORY_STYLES = [
-  { label: 'Randomize on every new story', value: 'random' },
-  { label: 'Dark Folktale', value: 'Dark Folktale' },
-  { label: 'Psychological Dread', value: 'Psychological Dread' },
-  { label: 'Cosmic Horror', value: 'Cosmic Horror' },
-  { label: 'Gothic Mystery', value: 'Gothic Mystery' }
-];
-const RANDOM_STYLES = STORY_STYLES.filter(item => item.value !== 'random').map(item => item.value);
-const OPENING_VARIANTS = {
-  'Dark Folktale': 'The air tastes of wet stone and old candle smoke. A narrow passage divides ahead: a warped wooden door stands ajar to your left, while steps descend into a dark that seems to absorb the weak light behind you. Someone has scratched rows of tally marks into the walls. There are too many to count, and several look freshly cut. Behind you, your footprints are already fading from the dust.',
-  'Psychological Dread': 'Cold air crawls over your skin. The corridor splits at a door hanging open on the left and a flight of steps that disappears below. You are certain you have walked this exact passage before, though you cannot remember arriving. A damp footprint appears in front of you, then another, each one facing toward you. The space behind your back feels occupied. When you turn, the corridor is empty—and somehow longer.',
-  'Cosmic Horror': 'The stone passage forks beneath a ceiling too high to see. A door hangs open to the left; a stairway angles down to the right. The air presses against your eardrums as if the room were far below the sea. Hair-thin marks cover the wall in spirals that make your eyes water when you try to follow them. From somewhere below comes a slow, measured knock. A second knock answers it from inside the stone.',
-  'Gothic Mystery': 'A thin draft moves through the subterranean corridor, carrying the scent of rain and extinguished lamps. To the left, a carved wooden door rests on a single hinge. To the right, a worn stairway drops into darkness. A brass number plate has been torn from the wall, leaving four pale screw holes and a rectangle of clean stone. Your name is written there in a hand you do not recognize. The ink is still wet.'
+const STYLES = ['Dark Folktale','Psychological Dread','Cosmic Horror','Gothic Mystery','Occult Conspiracy','Survival Realism'];
+const OPENINGS = {
+ 'Dark Folktale':'The air tastes of wet stone and old candle smoke. A warped door stands ajar to your left; worn steps descend to your right. Tally marks cover the wall, and some are fresh. Behind you, your footprints are already fading.',
+ 'Psychological Dread':'You know this corridor. You are certain you have never seen it before. A damp footprint appears ahead, facing you. When you turn, the passage behind you is longer than it was a moment ago.',
+ 'Cosmic Horror':'The passage forks beneath a ceiling lost in darkness. Thin spirals cover the stone, and following them makes your eyes water. A measured knock comes from below. Another answers from inside the wall.',
+ 'Gothic Mystery':'A draft carries the scent of rain and extinguished lamps. A carved door hangs on one hinge. Beside it, a clean rectangle on the wall bears your name in wet ink.',
+ 'Occult Conspiracy':'A service corridor ends at a locked door marked with a government seal that should not exist. Someone has scratched a list of dates into the paint. Tomorrow’s date is at the bottom.',
+ 'Survival Realism':'Your flashlight flickers over a flooded maintenance tunnel. Water reaches your ankles, your phone has one bar of battery, and the nearest exit sign points in two directions.'
 };
-const DEFAULT_CONFIG = {
-  aiEnabled: false,
-  apiKey: '',
-  provider: 'google',
-  model: 'gemini-3.5-flash-lite',
-  endpoint: 'https://api.openai.com/v1/chat/completions',
-  storyStyle: 'random',
-  customPremise: ''
-};
-
-function chooseRandomStyle() {
-  return RANDOM_STYLES[Math.floor(Math.random() * RANDOM_STYLES.length)];
+const DEFAULT = { theme:'Candlelit', effects:'Balanced', reduceMotion:false, textSize:17, autoRead:false, readAloud:false, haptics:true, music:0.25, sfx:0.7, voice:1, odds:true, difficulty:'Standard', aiEnabled:false, apiKey:'', provider:'google', model:'gemini-3.5-flash-lite', endpoint:'https://api.openai.com/v1/chat/completions', storyStyle:'Randomize', premise:'', seed:'', intensity:'Moderate', pacing:'Balanced', length:'Standard' };
+const MODEL_OPTIONS = { google:['gemini-3.5-flash-lite','gemini-2.5-flash'], openrouter:['openrouter/free','google/gemini-2.5-flash','meta-llama/llama-3.3-70b-instruct'], compatible:['gpt-4o-mini','gpt-4.1-mini'] };
+const fmt = v => String(v || '').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+const randomStyle = () => STYLES[Math.floor(Math.random()*STYLES.length)];
+function Button({children,onPress,theme,secondary=false,disabled=false,small=false}) {
+ const scale=useRef(new Animated.Value(1)).current;
+ const pressIn=()=>Animated.spring(scale,{toValue:0.975,useNativeDriver:true,speed:30,bounciness:2}).start();
+ const pressOut=()=>Animated.spring(scale,{toValue:1,useNativeDriver:true,speed:24,bounciness:7}).start();
+ return <Animated.View style={{transform:[{scale}],opacity:disabled?.48:1}}><Pressable accessibilityRole="button" onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} disabled={disabled} style={[s.button,{backgroundColor:secondary?theme.panel:theme.accent,borderColor:theme.line,minHeight:small?40:48,paddingVertical:small?9:13}]}><Text style={[s.buttonText,{color:secondary?theme.text:theme.ink,fontSize:small?12:14}]}>{children}</Text></Pressable></Animated.View>;
 }
-function modelsFor(provider) {
-  if (provider === 'google') return GOOGLE_MODELS;
-  if (provider === 'openrouter') return OPENROUTER_MODELS;
-  return COMPATIBLE_MODELS;
+function Meter({label,value,theme,icon}) {
+ const colors={Full:theme.good,Hurt:'#d8a64a',Critical:theme.danger,Dead:theme.danger,Steady:theme.good,Rattled:'#d8a64a',Breaking:'#db7b56',Lost:theme.danger};
+ const n=({Full:4,Hurt:3,Critical:1,Dead:0,Steady:4,Rattled:3,Breaking:1,Lost:0})[value]||0;
+ return <View style={[s.meter,{borderColor:theme.line}]}><Text style={{color:theme.text,fontWeight:'800'}}>{icon} {label}</Text><View style={{flexDirection:'row',gap:3,marginVertical:5}}>{[0,1,2,3].map(i=><View key={i} style={{height:5,flex:1,borderRadius:3,backgroundColor:i<n?(colors[value]||theme.accent):theme.panel2}} />)}</View><Text style={{color:colors[value]||theme.muted,fontSize:11,fontWeight:'700'}}>{value}</Text></View>;
 }
-function defaultModelFor(provider) {
-  return provider === 'google' ? 'gemini-3.5-flash-lite' : provider === 'openrouter' ? 'openrouter/free' : 'gpt-4o-mini';
+function Logo({theme}) { return <View style={{alignItems:'center',marginVertical:28}}><Svg width="300" height="88" viewBox="0 0 300 88"><Defs><LinearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor="#fff0c3"/><Stop offset=".45" stopColor={theme.accent}/><Stop offset="1" stopColor={theme.accent2}/></LinearGradient></Defs><SvgText x="150" y="57" fontSize="47" fontWeight="900" textAnchor="middle" letterSpacing="2" fill="url(#metal)">DEADEND</SvgText><Polygon points="35,69 265,69 257,72 43,72" fill={theme.accent} opacity=".8"/></Svg><Text style={{color:theme.muted,fontSize:11,letterSpacing:3}}>EVERY PATH ENDS SOMEWHERE.</Text></View>; }
+function Dice({roll,theme,onDone}) {
+ const spin=useRef(new Animated.Value(0)).current;
+ useEffect(()=>{if(roll){spin.setValue(0);Animated.sequence([Animated.timing(spin,{toValue:1,duration:850,useNativeDriver:true}),Animated.spring(spin,{toValue:0.94,useNativeDriver:true,speed:15,bounciness:12})]).start(()=>onDone?.());}},[roll]);
+ if(!roll)return null;
+ const rotate=spin.interpolate({inputRange:[0,1],outputRange:['-18deg','378deg']});
+ return <View style={[s.dicePanel,{backgroundColor:theme.panel,borderColor:theme.line}]}><Text style={[s.eyebrow,{color:theme.accent}]}>CHECK RESOLVED</Text><Animated.View style={{transform:[{rotate},{scale:spin.interpolate({inputRange:[0,.5,1],outputRange:[.65,1.18,1]})],marginVertical:14}}><Svg width="108" height="108" viewBox="0 0 100 100"><Polygon points="50,5 92,32 78,82 22,82 8,32" fill={theme.panel2} stroke={theme.accent} strokeWidth="2.5"/><Polygon points="50,5 50,49 8,32" fill={theme.accent2} opacity=".9"/><Polygon points="50,5 92,32 50,49" fill={theme.accent} opacity=".65"/><Polygon points="8,32 50,49 22,82" fill={theme.accent} opacity=".35"/><Polygon points="92,32 50,49 78,82" fill={theme.accent2} opacity=".65"/><SvgText x="50" y="58" fontSize="25" fontWeight="900" fill={theme.text} textAnchor="middle">{roll.raw}</SvgText></Svg></Animated.View><Text style={[s.title,{color:theme.text}]}>{fmt(roll.outcome)}</Text><Text style={{color:theme.muted,textAlign:'center'}}>D20 {roll.raw} {roll.modifier>=0?'+':''}{roll.modifier} = {roll.total}  ·  Target {roll.dc}</Text><Button theme={theme} secondary onPress={onDone}>CONTINUE</Button></View>;
 }
-function openingFor(style) {
-  return OPENING_VARIANTS[style] || OPENING_VARIANTS['Dark Folktale'];
+export default function App(){
+ const [settings,setSettings]=useState(DEFAULT),[profile,setProfile]=useState({runs:0,deaths:0,endings:[],achievements:[],bestRoll:null,worstRoll:null,score:0});
+ const [screen,setScreen]=useState('splash'),[state,setState]=useState(()=>createInitialState()),[scene,setScene]=useState(OPENINGS['Dark Folktale']),[style,setStyle]=useState('Dark Folktale');
+ const [premise,setPremise]=useState(''),[action,setAction]=useState(''),[busy,setBusy]=useState(false),[settingsDraft,setSettingsDraft]=useState(DEFAULT),[page,setPage]=useState('Story');
+ const [saves,setSaves]=useState([]),[slot,setSlot]=useState('1'),[roll,setRoll]=useState(null),[showRoll,setShowRoll]=useState(false),[status,setStatus]=useState(''),[onboard,setOnboard]=useState(0);
+ const op=useRef(0), fade=useRef(new Animated.Value(0)).current;
+ const theme=THEMES[settings.theme]||THEMES.Candlelit;
+ useEffect(()=>{(async()=>{const [cfg,p,sv]=await Promise.all([readSettings(),readProfile(),listSaves()]);setSettings(v=>({...v,...cfg}));setSettingsDraft(v=>({...v,...cfg}));setProfile(p);setSaves(sv);setScreen(p.onboarded?'title':'warning');})();},[]);
+ useEffect(()=>{fade.setValue(0);Animated.timing(fade,{toValue:1,duration:settings.reduceMotion?80:MOTION.normal,useNativeDriver:true}).start();},[screen]);
+ useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(screen==='game'){setScreen('pause');return true;}if(['options','journal','profile','saves','about','howto','setup'].includes(screen)){setScreen('menu');return true;}return false;});return()=>sub.remove();},[screen]);
+ const speak=text=>{if(!settings.readAloud)return;Speech.stop();Speech.speak(String(text).replace(/[*_#]/g,''),{rate:settings.voice||1,pitch:0.95});};
+ const tap=()=>{if(settings.haptics)Haptics.selectionAsync().catch(()=>{});};
+ const refreshSaves=async()=>setSaves(await listSaves());
+ const persistSettings=async next=>{setSettings(next);setSettingsDraft(next);try{await writeSettings(next);}catch{}};
+ const begin=async()=>{
+   const runId=++op.current;Keyboard.dismiss();const fresh=createInitialState();const selected=settings.storyStyle==='Randomize'?randomStyle():settings.storyStyle;
+   setState(fresh);setStyle(selected);setPremise(settings.premise||premise);setRoll(null);setScreen('loading');setBusy(true);
+   const seed=settings.seed||String(Math.floor(Math.random()*999999)+1);
+   let opening=OPENINGS[selected]||OPENINGS['Dark Folktale'];
+   if(settings.aiEnabled&&settings.apiKey.trim()){try{opening=await generateOpening(opening,settings.apiKey,settings.model,settings.provider,settings.endpoint,selected,(settings.premise||premise)+' Seed: '+seed+'. Setting: '+(settings.setting||'unknown')).catch(()=>opening);}catch{}}
+   if(runId!==op.current)return;
+   setScene(opening);setBusy(false);setProfile(p=>{const next={...p,runs:(p.runs||0)+1,lastSeed:seed};writeProfile(next).catch(()=>{});return next;});setScreen('game');
+ };
+ const updateScene=async(nextState,nextId,actionText,outcome,runId,customAction=false,sourceScene=scene)=>{
+   const updated={...nextState,nodeId:nextId};setState(updated);const base=getCurrentNode(updated)?.scene||scene;
+   if(updated.health==='Dead'||updated.sanity==='Lost'){const end=getCurrentNode(updated)?.scene||'The record ends here.';setScene(end);setBusy(false);setScreen('ending');speak(end);return;}
+   if(settings.aiEnabled&&settings.apiKey.trim()){
+     try{
+       if(customAction){const res=await narrateFreeform(sourceScene,actionText,outcome,settings.apiKey,settings.model,{...updated,nodeId:nextId},settings.provider,settings.endpoint,{storyStyle:style,customPremise:premise});if(runId!==op.current)return;setScene(res.text);if(res.nextNodeId&&getCurrentNode({...updated,nodeId:res.nextNodeId})){updated.nodeId=res.nextNodeId;setState({...updated});}}
+       else {const text=await narrate(base,actionText,outcome,settings.apiKey,settings.model,settings.provider,settings.endpoint,{...updated,storyStyle:style,customPremise:premise});if(runId!==op.current)return;setScene(text);}
+     }catch{setScene(base+'\n\nThe moment settles. The built-in story remains ready.');}
+   }else setScene(customAction&&!getCurrentNode(updated)?.scene?base+'\n\n'+offlineConsequence(outcome):base);
+   if(runId===op.current)setBusy(false);
+ };
+ const offlineConsequence=outcome=>outcome.includes('success')?'You make progress, and a detail in the surroundings becomes clear.':outcome.includes('partial')?'You make some progress, but the effort costs time and leaves a complication.':'The attempt fails. The surroundings answer with a new, uncomfortable silence.';
+ const choose=async choice=>{
+   if(busy)return;tap();Keyboard.dismiss();const id=++op.current;setBusy(true);
+   const result=applyChoice(state,choice);const r=result.roll?{...result.roll,dc:choice.dc,modifier:result.roll.modifier,stat:choice.stat}:null;setRoll(r);setShowRoll(!!r);
+   const outcome=r?'D20 '+r.raw+' + '+r.modifier+' = '+r.total+' against target '+r.dc+': '+r.outcome+'.':'No roll was required.';
+   if(r){setBusy(false);setPending({result,choice,outcome,id});}else await updateScene(result.state,result.nextNodeId,choice.text,outcome,id);
+ };
+ const [pending,setPending]=useState(null);
+ const finishRoll=async()=>{setShowRoll(false);if(!pending)return;const p=pending;setPending(null);await updateScene(p.result.state,p.result.nextNodeId,p.choice.text,p.outcome,p.id);};
+ const customAct=async()=>{
+   const text=action.trim().slice(0,200).replace(/[\u0000-\u001f\u007f]/g,'');if(!text||busy)return;
+   setAction('');Keyboard.dismiss();tap();const id=++op.current;setBusy(true);const result=resolveCustomAction(state,text);if(!result){setBusy(false);return;}
+   const r=result.roll?{...result.roll,dc:result.roll.dc||13}:null;setRoll(r);const outcome=r?'D20 '+r.raw+' + '+r.modifier+' = '+r.total+' against target '+r.dc+': '+r.outcome+'.':'No roll was required.';
+   if(r){setBusy(false);setPending({result,choice:{text},outcome,id,custom:true,source:scene});setShowRoll(true);}
+   else await updateScene(result.state,result.nextNodeId,text,outcome,id,true,scene);
+ };
+ const save=async saveSlot=>{try{await saveRun(saveSlot,{state,scene,style,premise,settings:{...settings,apiKey:''},turn:state.turn||0});await refreshSaves();setStatus('Saved to slot '+saveSlot);setScreen('pause');}catch{setStatus('Could not save this run.');}};
+ const resumeSave=async key=>{try{const item=await loadRun(key);setState(item.state);setScene(item.scene||getCurrentNode(item.state)?.scene||OPENINGS['Dark Folktale']);setStyle(item.style||'Dark Folktale');setPremise(item.premise||'');setScreen('game');setStatus('');}catch{setStatus('That save could not be loaded.');}};
+ const openOptions=()=>{setSettingsDraft({...settings});setPage('Story');setScreen('options');};
+ const saveOptions=async()=>{const next={...settingsDraft,apiKey:settingsDraft.apiKey||settings.apiKey};await persistSettings(next);setScreen('menu');};
+ const testAI=async()=>{setStatus('Testing connection…');try{await testConnection(settingsDraft.apiKey,settingsDraft.model,settingsDraft.provider,settingsDraft.endpoint);setSettingsDraft(v=>({...v,aiEnabled:true}));setStatus('Connection successful. Save Options to apply.');}catch(e){setStatus('Connection failed. Check key, model and quota.');}};
+ const menu=()=> <ScrollView contentContainerStyle={s.menuContent}><Logo theme={theme}/><Text style={[s.eyebrow,{color:theme.accent,textAlign:'center'}]}>A SURVIVAL HORROR ADVENTURE</Text><View style={{height:18}}/>{[['CONTINUE',()=>setScreen('game')],['NEW GAME',()=>setScreen('setup')],['LOAD GAME',async()=>{await refreshSaves();setScreen('saves');}],['JOURNAL & ENDINGS',()=>setScreen('journal')],['ACHIEVEMENTS / PROFILE',()=>setScreen('profile')],['OPTIONS',openOptions],['HOW TO PLAY',()=>setScreen('howto')],['ABOUT / CREDITS',()=>setScreen('about')]].map(([label,fn],i)=><View key={label} style={{marginBottom:9}}><Button theme={theme} secondary={i!==1} onPress={fn}>{label}</Button></View>)}<Text style={{color:theme.muted,textAlign:'center',marginTop:14,fontSize:11}}>DEADEND · BUILD 1.1</Text></ScrollView>;
+ const heading=(title,sub)=> <View style={{marginBottom:18}}><Text style={[s.title,{color:theme.text}]}>{title}</Text>{sub?<Text style={{color:theme.muted,marginTop:5}}>{sub}</Text>:null}</View>;
+ const field=(label,value,onChange,placeholder='',opts={})=><View style={{marginBottom:14}} key={label}><Text style={[s.label,{color:theme.muted}]}>{label}</Text><TextInput value={String(value??'')} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={theme.muted} secureTextEntry={opts.secure} multiline={opts.multiline} keyboardAppearance="dark" style={[s.input,{color:theme.text,backgroundColor:theme.panel,borderColor:theme.line,minHeight:opts.multiline?88:46}]} /></View>;
+ const selector=(label,value,values,onChange)=><View style={{marginBottom:15}} key={label}><Text style={[s.label,{color:theme.muted}]}>{label}</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:7,marginTop:7}}>{values.map(v=><Pressable key={v} onPress={()=>{tap();onChange(v);}} style={{borderWidth:1,borderColor:value===v?theme.accent:theme.line,backgroundColor:value===v?theme.panel2:theme.panel,paddingHorizontal:11,paddingVertical:10,borderRadius:8,minHeight:40,justifyContent:'center'}}><Text style={{color:value===v?theme.accent:theme.text,fontSize:12,fontWeight:value===v?'800':'500'}}>{v}</Text></Pressable>)}</View></View>;
+ const toggle=(label,key,description)=> <View key={key} style={[s.toggle,{borderColor:theme.line}]}><View style={{flex:1,paddingRight:12}}><Text style={{color:theme.text,fontWeight:'700'}}>{label}</Text>{description?<Text style={{color:theme.muted,fontSize:12,marginTop:4}}>{description}</Text>:null}</View><Switch value={!!settingsDraft[key]} onValueChange={v=>setSettingsDraft(p=>({...p,[key]:v}))} trackColor={{false:theme.line,true:theme.accent2}} thumbColor={settingsDraft[key]?theme.accent:'#bcb5a7'}/></View>;
+ const options=()=> <ScrollView contentContainerStyle={s.pageContent} keyboardShouldPersistTaps="handled">{heading('OPTIONS','Changes apply when you save.')}{selector('OPTIONS PAGE',page,['Story','Gameplay','Narrator Voice','AI Connection','Audio & Haptics','Display & Accessibility','Data'],setPage)}
+ {page==='Story'&&<>{selector('STORY STYLE',settingsDraft.storyStyle,['Randomize',...STYLES],v=>setSettingsDraft(p=>({...p,storyStyle:v})))}{field('CUSTOM PREMISE',settingsDraft.premise,v=>setSettingsDraft(p=>({...p,premise:v})),'Describe a place, threat, mystery…',{multiline:true})}{field('SEED (OPTIONAL)',settingsDraft.seed,v=>setSettingsDraft(p=>({...p,seed:v})))}{selector('PACING',settingsDraft.pacing,['Slow burn','Balanced','Relentless'],v=>setSettingsDraft(p=>({...p,pacing:v})))}{selector('NARRATION LENGTH',settingsDraft.length,['Brief','Standard','Rich'],v=>setSettingsDraft(p=>({...p,length:v})))}{selector('CONTENT INTENSITY',settingsDraft.intensity,['Mild','Moderate','Intense'],v=>setSettingsDraft(p=>({...p,intensity:v})))}</>}
+ {page==='Gameplay'&&<>{selector('DIFFICULTY',settingsDraft.difficulty,['Story','Standard','Hardcore','Nightmare'],v=>setSettingsDraft(p=>({...p,difficulty:v})))}{toggle('Show odds preview','odds','Display estimated success chance before risky actions.')}{selector('RUN LENGTH',settingsDraft.length,['Short','Standard','Long','Endless'],v=>setSettingsDraft(p=>({...p,length:v})))}</>}
+ {page==='Narrator Voice'&&<>{toggle('Read aloud','readAloud','Use the iPhone system voice when requested.')}{toggle('Automatically read new passages','autoRead','Speak each new scene. Stops when you leave the game.')}{field('SPEECH RATE',String(settingsDraft.voice),v=>setSettingsDraft(p=>({...p,voice:Math.max(.5,Math.min(1.5,Number(v)||1))})),'0.5–1.5')}{<Button theme={theme} secondary onPress={()=>Speech.speak('Every path ends somewhere.',{rate:settingsDraft.voice||1})}>PREVIEW VOICE</Button>}</>}
+ {page==='AI Connection'&&<>{toggle('Use live AI narrator','aiEnabled','Optional online narration. Built-in mode works without a key.')}{selector('PROVIDER',settingsDraft.provider,['google','openrouter','compatible'],v=>setSettingsDraft(p=>({...p,provider:v,model:MODEL_OPTIONS[v][0]})))}{selector('MODEL',settingsDraft.model,MODEL_OPTIONS[settingsDraft.provider]||MODEL_OPTIONS.google,v=>setSettingsDraft(p=>({...p,model:v})))}{field('API KEY',settingsDraft.apiKey,v=>setSettingsDraft(p=>({...p,apiKey:v}),'Enter key directly on this device',{secure:true}))}{settingsDraft.provider==='compatible'&&field('CHAT COMPLETIONS ENDPOINT',settingsDraft.endpoint,v=>setSettingsDraft(p=>({...p,endpoint:v}))}<Text style={{color:theme.muted,fontSize:12,marginBottom:12}}>Client-side API keys can be extracted. This is for personal sideloading only. Keys are not included in save files.</Text><Button theme={theme} secondary onPress={testAI}>TEST CONNECTION</Button></>}
+ {page==='Audio & Haptics'&&<>{toggle('Haptics','haptics','Subtle feedback for choices and controls.')}{toggle('Ambient sound','ambient','Ambient playback may be added by the audio layer; missing assets never block play.')}{field('SFX VOLUME',String(settingsDraft.sfx),v=>setSettingsDraft(p=>({...p,sfx:Math.max(0,Math.min(1,Number(v)||0))})),'0 to 1')}{field('MUSIC VOLUME',String(settingsDraft.music),v=>setSettingsDraft(p=>({...p,music:Math.max(0,Math.min(1,Number(v)||0))})),'0 to 1')}</>}
+ {page==='Display & Accessibility'&&<>{selector('THEME',settingsDraft.theme,['Candlelit','Dashboard'],v=>setSettingsDraft(p=>({...p,theme:v})))}{selector('EFFECTS QUALITY',settingsDraft.effects,['High','Balanced','Low'],v=>setSettingsDraft(p=>({...p,effects:v}))}{toggle('Reduce Motion','reduceMotion','Use fades instead of larger movement.')}{field('STORY TEXT SIZE',String(settingsDraft.textSize),v=>setSettingsDraft(p=>({...p,textSize:Math.max(14,Math.min(25,Number(v)||17))})),'14–25 pt')}</>}
+ {page==='Data'&&<><Text style={{color:theme.muted,marginBottom:12}}>Local saves, profile and settings are stored on this device.</Text><Button theme={theme} secondary onPress={async()=>{setSettingsDraft(p=>({...p,apiKey:''}));await persistSettings({...settings,apiKey:''});setStatus('Saved API key forgotten for this session and settings.');}}>FORGET API KEY</Button><View style={{height:10}}/><Button theme={theme} secondary onPress={async()=>{await clearAll();setProfile({runs:0,deaths:0,endings:[],achievements:[],bestRoll:null,worstRoll:null,score:0});setStatus('Local profile and saves reset.');}}>RESET LOCAL DATA</Button></>}
+ {status?<Text style={{color:theme.accent,marginVertical:12}}>{status}</Text>:null}<View style={{height:12}}/><Button theme={theme} onPress={saveOptions}>SAVE OPTIONS</Button><View style={{height:8}}/><Button theme={theme} secondary onPress={()=>setScreen('menu')}>CANCEL</Button></ScrollView>;
+ const game=()=> <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined} keyboardVerticalOffset={12}><View style={{flexDirection:'row',alignItems:'center',gap:7,padding:12}}><Meter label="HEALTH" value={state.health} icon="♥" theme={theme}/><Meter label="SANITY" value={state.sanity} icon="◈" theme={theme}/><Pressable onPress={()=>setScreen('pause')} accessibilityLabel="Pause game" style={[s.pause,{borderColor:theme.line}]}><Text style={{color:theme.accent,fontWeight:'900'}}>Ⅱ</Text></Pressable></View><View style={{paddingHorizontal:16,paddingBottom:8,flexDirection:'row',justifyContent:'space-between'}}><Text style={[s.eyebrow,{color:theme.accent}]}>{style.toUpperCase()}</Text><Text style={{color:theme.muted,fontSize:11}}>TURN {state.turn||0} · {fmt(state.nodeId)}</Text></View><ScrollView style={{flex:1}} contentContainerStyle={{padding:16,paddingTop:6}} keyboardShouldPersistTaps="handled"><Text style={[s.story,{color:theme.text,fontSize:settings.textSize||17}]}>{scene}</Text>{busy&&<Text style={{color:theme.accent,marginVertical:12}}>The narrator is considering…</Text>}{(getCurrentNode(state)?.choices||[]).map((c,i)=><Pressable key={c.text+i} disabled={busy} onPress={()=>choose(c)} style={[s.choice,{backgroundColor:theme.panel,borderColor:theme.line,opacity:busy?.5:1}]}><Text style={{color:theme.accent,fontSize:11,fontWeight:'900',marginBottom:4}}>OPTION {String(i+1).padStart(2,'0')}{c.dc?' · '+(c.dc>=19?'EXTREME':c.dc>=16?'HARD':c.dc>=13?'MODERATE':'EASY')+' CHECK':''}</Text><Text style={{color:theme.text,fontSize:14,fontWeight:'600'}}>{c.text}</Text></Pressable>)}<Text style={[s.label,{color:theme.muted,marginTop:12}]}>OR TRY SOMETHING ELSE</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginVertical:8}}>{['Examine','Listen','Search','Force','Hide','Run','Climb','Use item'].map(v=><Pressable key={v} onPress={()=>setAction(p=>p?(p+' '+v.toLowerCase()):v+' ')} style={[s.chip,{borderColor:theme.line}]}><Text style={{color:theme.muted,fontSize:11}}>{v}</Text></Pressable>)}</View><View style={{flexDirection:'row',gap:7}}><TextInput value={action} onChangeText={setAction} onSubmitEditing={customAct} placeholder="Describe your action…" placeholderTextColor={theme.muted} maxLength={200} returnKeyType="send" style={[s.input,{flex:1,color:theme.text,backgroundColor:theme.panel,borderColor:theme.line}]} /><View style={{width:90}}><Button theme={theme} onPress={customAct} disabled={busy}>ACT</Button></View></View>{settings.readAloud&&<View style={{marginTop:10}}><Button theme={theme} secondary small onPress={()=>speak(scene)}>READ PASSAGE</Button></View>}</ScrollView>{showRoll&&<View style={s.modalScrim}><Dice roll={roll} theme={theme} onDone={finishRoll}/></View>}</KeyboardAvoidingView>;
+ const savesScreen=()=> <ScrollView contentContainerStyle={s.pageContent}>{heading('LOAD GAME','Autosave and manual slots on this device.')}{saves.length===0?<Text style={{color:theme.muted,marginBottom:18}}>No saved games yet. Save from the pause menu during a run.</Text>:saves.map(item=><View key={item.key} style={[s.choice,{backgroundColor:theme.panel,borderColor:theme.line}]}><Text style={{color:theme.text,fontWeight:'800'}}>SLOT {item.slot||'?'} · {item.style||'Unknown tale'}</Text><Text style={{color:theme.muted,fontSize:12,marginVertical:5}}>{item.corrupt?'Save cannot be read':('Turn '+(item.turn||0)+' · '+new Date(item.savedAt||0).toLocaleString())}</Text><Button theme={theme} small disabled={!!item.corrupt} onPress={()=>resumeSave(item.key)}>LOAD THIS SAVE</Button></View>)}{[1,2,3].map(n=><View key={n} style={{marginBottom:8}}><Button theme={theme} secondary onPress={()=>save(String(n))}>SAVE CURRENT RUN TO SLOT {n}</Button></View>)}<Button theme={theme} secondary onPress={()=>setScreen('menu')}>BACK</Button></ScrollView>;
+ const pause=()=> <ScrollView contentContainerStyle={s.menuContent}>{heading('PAUSED','Your run is waiting.')}{[['RESUME',()=>setScreen('game')],['JOURNAL',()=>setScreen('journal')],['INVENTORY',()=>setStatus('Inventory: '+((state.inventory||[]).join(', ')||'Empty'))],['OPTIONS',openOptions],['SAVE GAME',()=>setScreen('saves')],['QUIT TO MENU',()=>setScreen('menu')]].map(([l,f])=><View key={l} style={{marginBottom:8}}><Button theme={theme} secondary onPress={f}>{l}</Button></View>)}{status?<Text style={{color:theme.accent,marginTop:10}}>{status}</Text>:null}</ScrollView>;
+ const journal=()=> <ScrollView contentContainerStyle={s.pageContent}>{heading('JOURNAL & ENDINGS','Your actions leave a record.')}{(state.history||[]).length===0?<Text style={{color:theme.muted}}>No actions recorded in this run.</Text>:(state.history||[]).slice().reverse().map((h,i)=><View key={i} style={[s.choice,{backgroundColor:theme.panel,borderColor:theme.line}]}><Text style={{color:theme.text,fontWeight:'700'}}>{h.action}</Text><Text style={{color:theme.muted,fontSize:12,marginTop:4}}>{fmt(h.outcome)} · {h.from} → {h.nodeId}</Text>{h.roll?<Text style={{color:theme.accent,fontSize:12}}>D20 {h.roll.raw} · total {h.roll.total}</Text>:null}</View>)}<Text style={[s.section,{color:theme.accent}]}>ENDINGS CODEX</Text>{['ending_escape','ending_truth','ending_dead','ending_lost'].map(v=><Text key={v} style={{color:theme.muted,marginBottom:8}}>◇  {profile.endings?.includes(v)?fmt(v):'??????'}</Text>)}<Button theme={theme} secondary onPress={()=>setScreen('game')}>RETURN TO STORY</Button></ScrollView>;
+ const profileScreen=()=> <ScrollView contentContainerStyle={s.pageContent}>{heading('PROFILE & ACHIEVEMENTS','A record of your survival.')}{[['Runs',profile.runs||0],['Deaths',profile.deaths||0],['Endings found',(profile.endings||[]).length],['Score',profile.score||0]].map(([k,v])=><View key={k} style={[s.stat,{borderColor:theme.line}]}><Text style={{color:theme.muted}}>{k}</Text><Text style={{color:theme.accent,fontSize:22,fontWeight:'900'}}>{v}</Text></View>)}<Text style={[s.section,{color:theme.accent}]}>ACHIEVEMENTS</Text>{[['First Footstep','Begin your first tale.'],['The Odds Were Against You','Survive a critical health state.'],['A Bad Feeling','Reach Breaking sanity.'],['Against the Grain','Finish an action through freeform input.'],['Found the Way Out','Escape the underground.']].map(([name,desc],i)=><View key={name} style={[s.choice,{backgroundColor:theme.panel,borderColor:theme.line,opacity:(profile.achievements||[]).includes(name)?1:.55}]}><Text style={{color:theme.text,fontWeight:'800'}}>{(profile.achievements||[]).includes(name)?'✦':'◇'} {name}</Text><Text style={{color:theme.muted,fontSize:12,marginTop:4}}>{desc}</Text></View>)}<Button theme={theme} secondary onPress={()=>setScreen('menu')}>BACK</Button></ScrollView>;
+ let body;
+ if(screen==='splash')body=<View style={s.center}><Logo theme={theme}/><Text style={{color:theme.muted}}>EVERY PATH ENDS SOMEWHERE.</Text></View>;
+ else if(screen==='warning')body=<View style={s.pageContent}>{heading('CONTENT WARNING','DeadEnd contains fictional horror, peril, psychological distress and character death.') }<Text style={[s.story,{color:theme.text}]}>The intensity can be adjusted in Options. You can stop or leave a run at any time.</Text><Button theme={theme} onPress={async()=>{const p={...profile,onboarded:true};setProfile(p);await writeProfile(p);setScreen('onboarding');}}>CONTINUE</Button></View>;
+ else if(screen==='onboarding')body=<View style={s.pageContent}>{heading(['MAKE CHOICES','ROLL FOR RISK','TRY ANY ACTION'][onboard],['Each decision changes the path you explore.','Risky actions use a twenty-sided die; your condition can affect the result.','Type a plausible action in your own words. The engine decides the outcome.'][onboard])}<View style={[s.choice,{backgroundColor:theme.panel,borderColor:theme.line}]}><Text style={{color:theme.text,lineHeight:24}}>{['Choices lead to locations, discoveries and different endings. Some paths are safer than others.','A natural 1 is a critical failure. A natural 20 is a critical success. Partial success can still carry a cost.','The built-in game works offline. AI narration is optional and can describe your attempt in more detail.'][onboard]}</Text></View><Button theme={theme} onPress={()=>onboard<2?setOnboard(onboard+1):setScreen('title')}>{onboard<2?'NEXT':'BEGIN'}</Button><View style={{height:10}}/><Button theme={theme} secondary onPress={()=>setScreen('title')}>SKIP</Button></View>;
+ else if(screen==='title')body=<View style={s.center}><Logo theme={theme}/><Button theme={theme} onPress={()=>setScreen('menu')}>PRESS TO BEGIN</Button></View>;
+ else if(screen==='menu')body=menu();
+ else if(screen==='setup')body=<ScrollView contentContainerStyle={s.pageContent}>{heading('NEW TALE','Every run begins with a choice.')}{selector('STORY STYLE',settings.storyStyle,['Randomize',...STYLES],v=>setSettings(p=>({...p,storyStyle:v})))}{field('CUSTOM PREMISE',settings.premise,v=>setSettings(p=>({...p,premise:v})),'Optional story direction',{multiline:true})}{field('SEED',settings.seed,v=>setSettings(p=>({...p,seed:v})),'Leave blank for a new seed')}{selector('DIFFICULTY',settings.difficulty,['Story','Standard','Hardcore','Nightmare'],v=>setSettings(p=>({...p,difficulty:v})))}<Button theme={theme} onPress={async()=>{await writeSettings(settings);begin();}}>BEGIN TALE</Button><View style={{height:8}}/><Button theme={theme} secondary onPress={()=>setScreen('menu')}>CANCEL</Button></ScrollView>;
+ else if(screen==='loading')body=<View style={s.center}><Logo theme={theme}/><Text style={[s.title,{color:theme.text,marginTop:20}]}>THE DARK BELOW</Text><Text style={{color:theme.muted,marginVertical:18,textAlign:'center',lineHeight:22}}>“Low sanity dulls perception. Rest when you can.”</Text><Text style={{color:theme.accent}}>Preparing your tale…</Text></View>;
+ else if(screen==='game')body=game();
+ else if(screen==='pause')body=pause();
+ else if(screen==='options')body=options();
+ else if(screen==='saves')body=savesScreen();
+ else if(screen==='journal')body=journal();
+ else if(screen==='profile')body=profileScreen();
+ else if(screen==='ending')body=<ScrollView contentContainerStyle={s.pageContent}>{heading('THE RECORD ENDS','Run summary') }<Text style={[s.story,{color:theme.text}]}>{scene}</Text><Text style={{color:theme.muted,marginVertical:12}}>Turns survived: {state.turn||0} · Items found: {(state.inventory||[]).length}</Text><Button theme={theme} onPress={()=>setScreen('menu')}>RETURN TO MENU</Button><View style={{height:8}}/><Button theme={theme} secondary onPress={begin}>NEW TALE</Button></ScrollView>;
+ else if(screen==='howto')body=<ScrollView contentContainerStyle={s.pageContent}>{heading('HOW TO PLAY','Read the room. Choose carefully. Survive.')}{['Read the current scene and inspect available choices.','Risky choices may require a d20 check. The target number represents difficulty.','Health affects physical actions; sanity affects observation and mental actions.','Use custom actions for things that are not listed. Impossible actions are not guaranteed to work.','Save frequently. AI narration is optional and may take longer than built-in text.'].map((t,i)=><Text key={i} style={{color:theme.text,lineHeight:23,marginBottom:12}}>{i+1}. {t}</Text>)}<Button theme={theme} secondary onPress={()=>setScreen('menu')}>BACK</Button></ScrollView>;
+ else body=<ScrollView contentContainerStyle={s.pageContent}>{heading('ABOUT DEADEND','Every path ends somewhere.') }<Text style={[s.story,{color:theme.text}]}>DeadEnd is an original choose-your-own-adventure survival horror game. Built-in gameplay runs locally; optional AI narration sends the current scene and action to the provider you configure. No ads, analytics or tracking are included.</Text><Text style={{color:theme.muted,marginVertical:12}}>Original procedural sound design · React Native / Expo · Personal sideloaded build</Text><Button theme={theme} secondary onPress={()=>setScreen('menu')}>BACK</Button></ScrollView>;
+ return <SafeAreaView style={[s.root,{backgroundColor:theme.bg}]}><ExpoStatusBar style="light"/><StatusBar barStyle="light-content" backgroundColor={theme.bg}/><Animated.View style={{flex:1,opacity:fade}}>{body}</Animated.View></SafeAreaView>;
 }
-function readableError(error, apiKey) {
-  let message = String(error && error.message ? error.message : 'Unknown error');
-  if (apiKey) message = message.split(apiKey).join('[API key hidden]');
-  return message.replace(/https?:\/\/\S+/g, '[URL]').slice(0, 260);
-}
-
-export default function App() {
-  const [initialPlaythrough] = useState(() => {
-    const style = chooseRandomStyle();
-    return { style, opening: openingFor(style) };
-  });
-  const [state, setState] = useState(() => createInitialState());
-  const [activeStoryStyle, setActiveStoryStyle] = useState(initialPlaythrough.style);
-  const [sceneText, setSceneText] = useState(initialPlaythrough.opening);
-  const [custom, setCustom] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [config, setConfig] = useState(DEFAULT_CONFIG);
-  const [draftConfig, setDraftConfig] = useState(DEFAULT_CONFIG);
-  const [showSettings, setShowSettings] = useState(false);
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const [styleDropdownOpen, setStyleDropdownOpen] = useState(false);
-  const [customModelMode, setCustomModelMode] = useState(false);
-  const [customModelText, setCustomModelText] = useState('');
-  const [lastRoll, setLastRoll] = useState(null);
-  const [aiStatus, setAiStatus] = useState('');
-  const operationId = useRef(0);
-  const node = getCurrentNode(state);
-
-  function openSettings() {
-    const options = modelsFor(config.provider);
-    const isCustom = !options.some(item => item.value === config.model);
-    setDraftConfig({ ...config });
-    setCustomModelMode(config.provider !== 'google' && (isCustom || !config.model));
-    setCustomModelText(isCustom ? config.model : '');
-    setModelDropdownOpen(false);
-    setStyleDropdownOpen(false);
-    setAiStatus('');
-    setShowSettings(true);
-  }
-
-  function closeSettingsDiscarding() {
-    Keyboard.dismiss();
-    setShowSettings(false);
-    setModelDropdownOpen(false);
-    setStyleDropdownOpen(false);
-  }
-
-  function chooseProvider(provider) {
-    setDraftConfig(previous => ({
-      ...previous,
-      provider,
-      model: defaultModelFor(provider)
-    }));
-    setCustomModelMode(false);
-    setCustomModelText('');
-    setModelDropdownOpen(false);
-  }
-
-  function chooseModel(value) {
-    if (value === '__custom__') {
-      setCustomModelMode(true);
-      setCustomModelText('');
-      setDraftConfig(previous => ({ ...previous, model: '' }));
-    } else {
-      setCustomModelMode(false);
-      setCustomModelText('');
-      setDraftConfig(previous => ({ ...previous, model: value }));
-    }
-    setModelDropdownOpen(false);
-  }
-
-  function saveSettings() {
-    Keyboard.dismiss();
-    const modelValue = customModelMode ? customModelText.trim() : draftConfig.model.trim();
-    if (draftConfig.aiEnabled && !draftConfig.apiKey.trim()) {
-      setAiStatus('Enter an API key for the selected provider before saving live AI settings.');
-      return;
-    } else if (draftConfig.aiEnabled && !modelValue) {
-      setAiStatus('Choose a model ID before enabling AI.');
-      return;
-    } else {
-      setAiStatus('');
-    }
-    const saved = { ...draftConfig, model: modelValue || defaultModelFor(draftConfig.provider) };
-    setConfig(saved);
-    setDraftConfig(saved);
-    setShowSettings(false);
-    setModelDropdownOpen(false);
-    setStyleDropdownOpen(false);
-  }
-
-  async function showScene(nextState, nextNodeId, action, outcome = '', runId) {
-    const updated = { ...nextState, nodeId: nextNodeId };
-    setState(updated);
-    const base = getCurrentNode(updated)?.scene || 'The path ends here.';
-    const savedConfig = config;
-    try {
-      if (savedConfig.aiEnabled && savedConfig.apiKey.trim()) {
-        setSceneText(base);
-        const narrated = await narrate(base, action, outcome, savedConfig.apiKey, savedConfig.model, savedConfig.provider, savedConfig.endpoint, {
-          ...updated,
-          storyStyle: activeStoryStyle,
-          customPremise: savedConfig.customPremise
-        });
-        if (runId !== operationId.current) return;
-        setSceneText(outcome ? narrated + '\n\n' + outcome : narrated);
-      } else {
-        const offlineResult = outcome ? base + '\n\n' + outcome : base;
-        if (runId === operationId.current) setSceneText(offlineResult);
-      }
-    } catch (error) {
-      if (runId === operationId.current) setSceneText(base + '\n\n[The written story continues. ' + readableError(error, savedConfig.apiKey) + ']');
-    } finally {
-      if (runId === operationId.current) setBusy(false);
-    }
-  }
-
-  async function onChoice(choice) {
-    if (busy) return;
-    Keyboard.dismiss();
-    const runId = ++operationId.current;
-    setBusy(true);
-    const result = applyChoice(state, choice);
-    setLastRoll(result.roll ? { ...result.roll, dc: choice.dc, stat: choice.stat } : null);
-    const outcome = result.roll
-      ? 'D20 ' + result.roll.raw + ' + ' + result.roll.modifier + ' = ' + result.roll.total +
-        ' against DC ' + result.roll.dc + ': ' + result.roll.outcome.replace(/_/g, ' ') + '.'
-      : 'No roll was needed.';
-    await showScene(result.state, result.nextNodeId, choice.text, outcome, runId);
-  }
-
-  async function onCustom() {
-    const action = custom.trim();
-    if (!action || busy) return;
-    Keyboard.dismiss();
-    const runId = ++operationId.current;
-    setCustom('');
-    setBusy(true);
-    const result = resolveCustomAction(state, action);
-    if (!result) {
-      setBusy(false);
-      return;
-    }
-    setLastRoll(result.roll ? { ...result.roll, dc: result.roll.dc || 13 } : null);
-    setState(result.state);
-    const roll = result.roll;
-    const outcome = roll
-      ? 'D20 ' + roll.raw + ' + ' + roll.modifier + ' = ' + roll.total + ' against DC ' + roll.dc + ': ' + roll.outcome.replace(/_/g, ' ') + '.'
-      : 'No roll was required.';
-    const sourceScene = node?.scene || sceneText;
-    const savedConfig = config;
-
-    try {
-      if (result.state.health === 'Dead' || result.state.sanity === 'Lost') {
-        const ending = getCurrentNode(result.state);
-        if (runId === operationId.current) setSceneText(ending?.scene || 'The record ends here.');
-        return;
-      }
-      if (savedConfig.aiEnabled && savedConfig.apiKey.trim()) {
-        setSceneText('The scene holds still for a moment as the consequences take shape…');
-        const aiResult = await narrateFreeform(sourceScene, action, outcome, savedConfig.apiKey, savedConfig.model, {
-          ...result.state,
-          nodeId: state.nodeId
-        }, savedConfig.provider, savedConfig.endpoint, {
-          storyStyle: activeStoryStyle,
-          customPremise: savedConfig.customPremise
-        });
-        if (runId !== operationId.current) return;
-        let nextNodeId = aiResult.nextNodeId || result.state.nodeId;
-        if (result.state.health === 'Dead') nextNodeId = 'ending_dead';
-        if (result.state.sanity === 'Lost') nextNodeId = 'ending_lost';
-        const nextState = { ...result.state, nodeId: nextNodeId };
-        const history = [...nextState.history];
-        if (history.length) history[history.length - 1] = { ...history[history.length - 1], nodeId: nextNodeId };
-        nextState.history = history;
-        setState(nextState);
-        setSceneText(aiResult.text);
-      } else {
-        let nextText;
-        if (result.matchedChoice) {
-          nextText = getCurrentNode(result.state)?.scene || 'The path ends here.';
-        } else {
-          const consequence = !roll
-            ? 'You act, but the surroundings give no immediate answer. Something about the silence has changed.'
-            : ['success', 'critical_success'].includes(roll.outcome)
-              ? 'You make meaningful progress. A detail you might have missed becomes clear, opening a new possibility.'
-              : roll.outcome === 'partial_success'
-                ? 'You make some progress, but it costs time or exposes you to a new complication.'
-                : 'The attempt fails or creates a complication. The place seems to react to the effort, and the safest route is no longer obvious.';
-          nextText = 'You attempt: ' + action + '\n\n' + outcome + '\n\n' + consequence + '\n\n' + (getCurrentNode(result.state)?.scene || sourceScene);
-        }
-        if (runId === operationId.current) setSceneText(nextText);
-      }
-    } catch (error) {
-      if (runId === operationId.current) {
-        setSceneText((getCurrentNode(result.state)?.scene || sourceScene) + '\n\n[AI narration failed. The game remains playable. ' + readableError(error, config.apiKey) + ']');
-      }
-    } finally {
-      if (runId === operationId.current) setBusy(false);
-    }
-  }
-
-  async function restart() {
-    const runId = ++operationId.current;
-    Keyboard.dismiss();
-    const fresh = createInitialState();
-    const style = config.storyStyle === 'random' ? chooseRandomStyle() : config.storyStyle;
-    setActiveStoryStyle(style);
-    setState(fresh);
-    setCustom('');
-    setLastRoll(null);
-    setBusy(false);
-    setAiStatus('');
-    setSceneText(openingFor(style));
-
-    if (config.aiEnabled && config.apiKey.trim()) {
-      setBusy(true);
-      setSceneText('Writing a new opening…');
-      try {
-        const generated = await generateOpening(
-          openingFor(style),
-          config.apiKey,
-          config.model,
-          config.provider,
-          config.endpoint,
-          style,
-          config.customPremise
-        );
-        if (runId === operationId.current) setSceneText(generated);
-      } catch (error) {
-        if (runId === operationId.current) {
-          setSceneText(openingFor(style) + '\n\n[Using the built-in opening because AI generation failed. ' + readableError(error, config.apiKey) + ']');
-        }
-      } finally {
-        if (runId === operationId.current) setBusy(false);
-      }
-    }
-  }
-
-  function stopWaitingForAI() {
-    ++operationId.current;
-    Keyboard.dismiss();
-    setBusy(false);
-    const fallbackScene = getCurrentNode(state)?.scene || sceneText;
-    setSceneText(fallbackScene + '\n\n[AI response skipped. The built-in story remains playable.]');
-  }
-
-  async function testAI() {
-    if (testing) return;
-    if (!draftConfig.apiKey.trim()) {
-      setAiStatus('Enter your provider API key first.');
-      return;
-    }
-    const selectedModel = customModelMode ? customModelText.trim() : draftConfig.model.trim();
-    if (!selectedModel) {
-      setAiStatus('Choose a model ID first.');
-      return;
-    }
-    setTesting(true);
-    setAiStatus('Testing connection (12-second limit)…');
-    try {
-      const responseText = await testConnection(
-        draftConfig.apiKey,
-        selectedModel,
-        draftConfig.provider,
-        draftConfig.endpoint
-      );
-      setDraftConfig(previous => ({ ...previous, aiEnabled: true }));
-      setAiStatus('Connection successful. Live AI is now enabled in these draft settings. Tap SAVE & CLOSE SETTINGS to apply them, then NEW STORY to generate an AI opening.');
-    } catch (error) {
-      setAiStatus('Connection failed: ' + readableError(error, draftConfig.apiKey));
-    } finally {
-      setTesting(false);
-    }
-  }
-
-  const healthLevel = ({ Full: 4, Hurt: 3, Critical: 1, Dead: 0 })[state.health] ?? 0;
-  const sanityLevel = ({ Steady: 4, Rattled: 3, Breaking: 1, Lost: 0 })[state.sanity] ?? 0;
-  const modelOptions = modelsFor(draftConfig.provider);
-  const selectedModelLabel = customModelMode
-    ? 'Custom model ID'
-    : (modelOptions.find(item => item.value === draftConfig.model)?.label || draftConfig.model || 'Choose model');
-  const selectedStyleLabel = STORY_STYLES.find(item => item.value === draftConfig.storyStyle)?.label || 'Randomize on every new story';
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 6 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        >
-          <View style={styles.masthead}>
-            <Text style={styles.eyebrow}>FIELD NOTES · UNKNOWN LOCATION</Text>
-            <Text style={styles.title}>THE DARK BELOW</Text>
-            <Text style={styles.subtitle}>A survival record. Every choice leaves a mark.</Text>
-            <Text style={styles.styleStamp}>CURRENT TONE / {activeStoryStyle.toUpperCase()}</Text>
-          </View>
-
-          <View style={styles.toolbar}>
-            <TouchableOpacity onPress={() => showSettings ? closeSettingsDiscarding() : openSettings()} style={styles.smallButton}>
-              <Text style={styles.smallButtonText}>{showSettings ? 'Close settings' : 'AI & story settings'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={restart} style={styles.smallButton} disabled={false}>
-              <Text style={styles.smallButtonText}>New story</Text>
-            </TouchableOpacity>
-          </View>
-
-          {!showSettings && !!aiStatus && <Text style={styles.aiStatus}>{aiStatus}</Text>}
-
-          {showSettings && <View style={styles.settings}>
-            <Text style={styles.panelTitle}>NARRATIVE ENGINE</Text>
-            <View style={styles.switchRow}>
-              <View style={styles.switchTextWrap}>
-                <Text style={styles.label}>Use live AI narrator</Text>
-                <Text style={styles.hint}>AI adds original consequences and can interpret freeform actions. The built-in game remains playable offline.</Text>
-              </View>
-              <Switch value={draftConfig.aiEnabled} onValueChange={value => setDraftConfig(previous => ({ ...previous, aiEnabled: value }))} />
-            </View>
-
-            <Text style={styles.label}>AI provider</Text>
-            <View style={styles.providerRow}>
-              {[
-                { id: 'google', label: 'Google Gemini' },
-                { id: 'openrouter', label: 'OpenRouter' },
-                { id: 'compatible', label: 'Compatible API' }
-              ].map(item => (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => chooseProvider(item.id)}
-                  style={[styles.providerButton, draftConfig.provider === item.id && styles.providerButtonActive]}
-                >
-                  <Text style={styles.smallButtonText}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Google AI Studio API key (kept in memory for this session)</Text>
-            <TextInput
-              style={styles.input}
-              value={draftConfig.apiKey}
-              onChangeText={value => setDraftConfig(previous => ({ ...previous, apiKey: value }))}
-              placeholder={draftConfig.provider === 'google' ? 'Google AI Studio API key' : draftConfig.provider === 'openrouter' ? 'OpenRouter API key' : 'Provider API key'}
-              placeholderTextColor="#777"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="none"
-              autoComplete="off"
-              returnKeyType="done"
-            />
-            {draftConfig.provider === 'google' && <Text style={styles.hint}>Use a key created in Google AI Studio. Its API restrictions must allow the Gemini API (Generative Language API). Do not paste the key into chat or GitHub.</Text>}
-
-            <Text style={styles.label}>Model</Text>
-            <TouchableOpacity style={styles.dropdownButton} onPress={() => { Keyboard.dismiss(); setModelDropdownOpen(value => !value); }}>
-              <Text style={styles.dropdownButtonText}>{selectedModelLabel}</Text>
-              <Text style={styles.dropdownArrow}>{modelDropdownOpen ? '−' : '▾'}</Text>
-            </TouchableOpacity>
-            {modelDropdownOpen && <View style={styles.dropdownMenu}>
-              {modelOptions.map(item => (
-                <TouchableOpacity key={item.value} style={[styles.dropdownOption, draftConfig.model === item.value && styles.dropdownOptionSelected]} onPress={() => chooseModel(item.value)}>
-                  <Text style={styles.dropdownOptionText}>{item.label}</Text>
-                  {draftConfig.model === item.value && <Text style={styles.checkmark}>✓</Text>}
-                </TouchableOpacity>
-              ))}
-            </View>}
-            {customModelMode && <TextInput
-              style={styles.input}
-              value={customModelText}
-              onChangeText={setCustomModelText}
-              placeholder="Enter exact model ID"
-              placeholderTextColor="#777"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="done"
-            />}
-
-            {draftConfig.provider === 'compatible' && <>
-              <Text style={styles.label}>Chat Completions endpoint</Text>
-              <TextInput
-                style={styles.input}
-                value={draftConfig.endpoint}
-                onChangeText={value => setDraftConfig(previous => ({ ...previous, endpoint: value }))}
-                placeholder="https://api.openai.com/v1/chat/completions"
-                placeholderTextColor="#777"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-            </>}
-
-            <Text style={styles.label}>Story style</Text>
-            <TouchableOpacity style={styles.dropdownButton} onPress={() => { Keyboard.dismiss(); setStyleDropdownOpen(value => !value); }}>
-              <Text style={styles.dropdownButtonText}>{selectedStyleLabel}</Text>
-              <Text style={styles.dropdownArrow}>{styleDropdownOpen ? '−' : '▾'}</Text>
-            </TouchableOpacity>
-            {styleDropdownOpen && <View style={styles.dropdownMenu}>
-              {STORY_STYLES.map(item => (
-                <TouchableOpacity key={item.value} style={[styles.dropdownOption, draftConfig.storyStyle === item.value && styles.dropdownOptionSelected]} onPress={() => {
-                  setDraftConfig(previous => ({ ...previous, storyStyle: item.value }));
-                  setStyleDropdownOpen(false);
-                }}>
-                  <Text style={styles.dropdownOptionText}>{item.label}</Text>
-                  {draftConfig.storyStyle === item.value && <Text style={styles.checkmark}>✓</Text>}
-                </TouchableOpacity>
-              ))}
-            </View>}
-            <Text style={styles.hint}>Random mode chooses a different tone and opening for each new story. Story-style changes take effect when you start a new story. A custom premise guides the AI opening and later consequences; without AI, the built-in game remains playable.</Text>
-
-            <Text style={styles.label}>Custom premise or story direction (optional)</Text>
-            <TextInput
-              style={[styles.input, styles.premiseInput]}
-              value={draftConfig.customPremise}
-              onChangeText={value => setDraftConfig(previous => ({ ...previous, customPremise: value.slice(0, 500) }))}
-              placeholder="Example: the passage belongs to a sealed 1920s observatory, and the stars outside are moving incorrectly."
-              placeholderTextColor="#777"
-              autoCapitalize="sentences"
-              autoCorrect
-              multiline
-              maxLength={500}
-              textAlignVertical="top"
-              blurOnSubmit={false}
-            />
-            <Text style={styles.characterCount}>{draftConfig.customPremise.length}/500</Text>
-
-            <TouchableOpacity style={[styles.testButton, testing && styles.buttonDisabled]} onPress={testAI} disabled={testing}>
-              {testing ? <ActivityIndicator color="#f0e4cb" /> : <Text style={styles.testButtonText}>TEST AI CONNECTION</Text>}
-              {testing && <Text style={styles.testButtonText}>Testing…</Text>}
-            </TouchableOpacity>
-            {!!aiStatus && <Text style={styles.aiStatus}>{aiStatus}</Text>}
-            <Text style={styles.hint}>The connection test has a 12-second timeout. API requests time out instead of locking the game. Free-tier quotas or charges depend on your provider and account plan. API keys are not saved to GitHub or persistent storage. A client-side key can be extracted from an installed app, so keep this for personal use.</Text>
-
-            <View style={styles.settingsActions}>
-              <TouchableOpacity style={styles.saveButton} onPress={saveSettings}>
-                <Text style={styles.saveButtonText}>SAVE & CLOSE SETTINGS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelButton} onPress={closeSettingsDiscarding}>
-                <Text style={styles.cancelButtonText}>Discard edits</Text>
-              </TouchableOpacity>
-            </View>
-          </View>}
-
-          <View style={styles.statusPanel}>
-            <View style={styles.statCard}>
-              <View style={styles.statHeading}><Text style={styles.statGlyph}>♥</Text><Text style={styles.statLabel}>VITALITY</Text></View>
-              <Text style={styles.statValue}>{state.health.toUpperCase()}</Text>
-              <View style={styles.meter}>{[0, 1, 2, 3].map(i => <View key={i} style={[styles.meterSegment, i < healthLevel && styles.healthOn]} />)}</View>
-            </View>
-            <View style={styles.statCard}>
-              <View style={styles.statHeading}><Text style={styles.sanityGlyph}>◉</Text><Text style={styles.statLabel}>SANITY</Text></View>
-              <Text style={styles.statValue}>{state.sanity.toUpperCase()}</Text>
-              <View style={styles.meter}>{[0, 1, 2, 3].map(i => <View key={i} style={[styles.meterSegment, i < sanityLevel && styles.sanityOn]} />)}</View>
-            </View>
-          </View>
-
-          {!!state.inventory.length && <Text style={styles.inventory}>CARRIED: {state.inventory.join('  ·  ').toUpperCase()}</Text>}
-
-          {lastRoll && <View style={styles.rollPanel}>
-            <Text style={styles.rollEyebrow}>FATE / D20 CHECK</Text>
-            <View style={styles.rollRow}>
-              <View style={styles.dieWrap}><Text style={styles.die}>D20</Text><Text style={styles.dieCaption}>THE DRAW</Text></View>
-              <View style={styles.rollNumbers}>
-                <Text style={styles.rollTotal}>{lastRoll.total}</Text>
-                <Text style={styles.rollFormula}>ROLL {lastRoll.raw} {lastRoll.modifier >= 0 ? '+' : '−'} {Math.abs(lastRoll.modifier || 0)} · TARGET {lastRoll.dc}</Text>
-              </View>
-            </View>
-            <Text style={styles.rollOutcome}>{String(lastRoll.outcome || 'resolved').replace(/_/g, ' ').toUpperCase()}</Text>
-            <View style={styles.rollMeter}>{[0, 1, 2, 3, 4].map(i => <View key={i} style={[styles.rollMeterSegment, (lastRoll.outcome === 'critical_success' ? i < 5 : lastRoll.outcome === 'success' ? i < 4 : lastRoll.outcome === 'partial_success' ? i < 3 : i < 1) && styles.rollMeterOn]} />)}</View>
-          </View>}
-
-          <View style={styles.sceneFrame}>
-            <Text style={styles.sceneKicker}>TRANSCRIPTION / {String(state.nodeId || 'UNKNOWN').replace(/_/g, ' ').toUpperCase()}</Text>
-            {busy && <View style={styles.thinkingRow}><ActivityIndicator size="small" color="#8a6b3f" /><Text style={styles.thinkingText}>{config.aiEnabled ? 'Narrating consequences…' : 'Updating the record…'}</Text></View>}
-            <Text style={styles.scene}>{sceneText}</Text>
-            {busy && config.aiEnabled && <TouchableOpacity style={styles.skipAIButton} onPress={stopWaitingForAI}><Text style={styles.skipAIButtonText}>STOP WAITING · USE BUILT-IN STORY</Text></TouchableOpacity>}
-          </View>
-
-          {node?.choices?.map((choice, i) => (
-            <TouchableOpacity key={i} style={[styles.choice, busy && styles.choiceDisabled]} onPress={() => onChoice(choice)} disabled={busy}>
-              <Text style={styles.choiceIndex}>{String(i + 1).padStart(2, '0')}</Text>
-              <Text style={styles.choiceText}>{choice.text}</Text>
-              <Text style={styles.choiceArrow}>›</Text>
-            </TouchableOpacity>
-          ))}
-
-          {node?.choices?.length > 0 ? <>
-            <Text style={styles.label}>YOUR ACTION</Text>
-            <Text style={styles.hint}>Try an action that is not listed. Dice determine risk; AI can describe the result and choose a valid destination.</Text>
-            <View style={styles.customRow}>
-              <TextInput
-                style={styles.customInput}
-                placeholder="What do you do?"
-                placeholderTextColor="#817766"
-                value={custom}
-                onChangeText={setCustom}
-                editable={!busy}
-                returnKeyType="send"
-                onSubmitEditing={onCustom}
-                blurOnSubmit
-                autoCorrect
-              />
-              <TouchableOpacity style={[styles.customBtn, (busy || !custom.trim()) && styles.buttonDisabled]} onPress={onCustom} disabled={busy || !custom.trim()}>
-                <Text style={styles.customBtnText}>{busy ? '…' : 'ACT'}</Text>
-              </TouchableOpacity>
-            </View>
-          </> : <Text style={styles.endingNote}>THE RECORD ENDS HERE. Start a new story to enter again.</Text>}
-
-          <Text style={styles.footer}>AI is optional. Choices, dice, health and sanity are handled locally; narrative requests have a hard timeout and built-in fallback.</Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#11100e' },
-  scroll: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 42, flexGrow: 1 },
-  masthead: { backgroundColor: '#1b1916', borderWidth: 1, borderColor: '#514638', padding: 17, marginBottom: 14, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 8 },
-  eyebrow: { color: '#a58d66', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginBottom: 7 },
-  title: { color: '#e8ddc7', fontSize: 26, fontWeight: '900', letterSpacing: 1.8 },
-  subtitle: { color: '#a99d88', fontSize: 12, marginTop: 6, lineHeight: 18 },
-  styleStamp: { color: '#987d54', fontSize: 9, fontWeight: '800', letterSpacing: 1.25, marginTop: 12, paddingTop: 9, borderTopWidth: 1, borderTopColor: '#393228' },
-  toolbar: { flexDirection: 'row', gap: 9, marginBottom: 14 },
-  smallButton: { flex: 1, backgroundColor: '#2a2620', paddingVertical: 11, paddingHorizontal: 10, borderRadius: 3, borderWidth: 1, borderColor: '#61513a', alignItems: 'center', justifyContent: 'center' },
-  smallButtonText: { color: '#e5d8bf', fontWeight: '700', fontSize: 12, textAlign: 'center' },
-  settings: { backgroundColor: '#1b1916', padding: 14, borderRadius: 3, marginBottom: 18, borderWidth: 1, borderColor: '#796143' },
-  panelTitle: { color: '#c6a875', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 12 },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: '#393228', paddingBottom: 12, marginBottom: 8 },
-  switchTextWrap: { flex: 1 },
-  label: { color: '#d8cbb4', fontSize: 13, fontWeight: '700', marginTop: 12, marginBottom: 7 },
-  hint: { color: '#a39987', fontSize: 12, lineHeight: 18, marginBottom: 8 },
-  input: { backgroundColor: '#12110f', color: '#eee2cc', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 3, borderWidth: 1, borderColor: '#544733', minHeight: 44, fontSize: 14 },
-  premiseInput: { minHeight: 84, maxHeight: 140 },
-  characterCount: { color: '#817867', fontSize: 10, textAlign: 'right', marginTop: 3 },
-  providerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 4 },
-  providerButton: { backgroundColor: '#27231e', paddingVertical: 9, paddingHorizontal: 10, borderRadius: 3, borderWidth: 1, borderColor: '#4b4134' },
-  providerButtonActive: { backgroundColor: '#51412c', borderColor: '#c5a56a' },
-  dropdownButton: { backgroundColor: '#12110f', borderWidth: 1, borderColor: '#8b7045', minHeight: 46, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 3 },
-  dropdownButtonText: { color: '#eee2cc', fontSize: 13, flex: 1, paddingRight: 10 },
-  dropdownArrow: { color: '#d1b17a', fontSize: 18, fontWeight: '900' },
-  dropdownMenu: { marginTop: 3, backgroundColor: '#15130f', borderWidth: 1, borderColor: '#514638' },
-  dropdownOption: { minHeight: 42, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#2c2821' },
-  dropdownOptionSelected: { backgroundColor: '#31291e' },
-  dropdownOptionText: { color: '#ded0b6', flex: 1, fontSize: 12 },
-  checkmark: { color: '#d1b17a', fontWeight: '900', marginLeft: 10 },
-  testButton: { backgroundColor: '#5a472d', borderColor: '#b59863', borderWidth: 1, minHeight: 44, paddingHorizontal: 11, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginVertical: 9 },
-  buttonDisabled: { opacity: 0.48 },
-  testButtonText: { color: '#f0e4cb', fontWeight: '800', letterSpacing: 0.8, fontSize: 12 },
-  aiStatus: { color: '#e2c792', fontSize: 12, lineHeight: 18, marginBottom: 8, padding: 10, backgroundColor: '#282219', borderLeftWidth: 2, borderLeftColor: '#af8c51' },
-  settingsActions: { gap: 8, marginTop: 8 },
-  saveButton: { backgroundColor: '#77603a', borderWidth: 1, borderColor: '#d5b981', padding: 13, alignItems: 'center', justifyContent: 'center' },
-  saveButtonText: { color: '#fff2d5', fontSize: 12, fontWeight: '900', letterSpacing: 1.1 },
-  cancelButton: { padding: 10, alignItems: 'center' },
-  cancelButtonText: { color: '#a59a86', fontSize: 12, textDecorationLine: 'underline' },
-  statusPanel: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  statCard: { flex: 1, backgroundColor: '#211e19', borderWidth: 1, borderColor: '#62513a', padding: 12 },
-  statHeading: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  statGlyph: { color: '#b56d61', fontSize: 18, fontWeight: '900' },
-  sanityGlyph: { color: '#b5a3d2', fontSize: 18, fontWeight: '900' },
-  statLabel: { color: '#b8a98e', fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
-  statValue: { color: '#eee1c7', fontSize: 12, fontWeight: '900', letterSpacing: 1, marginTop: 7, marginBottom: 10 },
-  meter: { flexDirection: 'row', gap: 4 },
-  meterSegment: { flex: 1, height: 7, backgroundColor: '#494239', borderWidth: 1, borderColor: '#625543' },
-  healthOn: { backgroundColor: '#a34f43', borderColor: '#c77c68' },
-  sanityOn: { backgroundColor: '#8270a2', borderColor: '#b1a0d0' },
-  inventory: { color: '#b5a588', fontSize: 10, letterSpacing: 1.2, marginBottom: 14 },
-  rollPanel: { backgroundColor: '#1d1a16', borderWidth: 1, borderColor: '#8b7045', padding: 14, marginBottom: 14 },
-  rollEyebrow: { color: '#c2a36d', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 10 },
-  rollRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  dieWrap: { alignItems: 'center' },
-  die: { color: '#e4d2ad', fontSize: 22, fontWeight: '900', borderWidth: 1, borderColor: '#9d8151', padding: 10, textAlign: 'center' },
-  dieCaption: { color: '#8d7b5d', fontSize: 8, letterSpacing: 1, marginTop: 4 },
-  rollNumbers: { flex: 1 },
-  rollTotal: { color: '#f0e0bf', fontSize: 30, fontWeight: '900' },
-  rollFormula: { color: '#a99a80', fontSize: 10, letterSpacing: 0.8, marginTop: 2 },
-  rollOutcome: { color: '#d5bd8b', fontSize: 12, fontWeight: '900', letterSpacing: 1, marginTop: 10 },
-  rollMeter: { flexDirection: 'row', gap: 4, marginTop: 9 },
-  rollMeterSegment: { flex: 1, height: 5, backgroundColor: '#494239', borderWidth: 1, borderColor: '#625543' },
-  rollMeterOn: { backgroundColor: '#a98a54', borderColor: '#d2b67f' },
-  sceneFrame: { backgroundColor: '#d5c6a6', borderColor: '#7e6b4d', borderWidth: 2, padding: 16, marginBottom: 17, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 8 },
-  sceneKicker: { color: '#766348', fontSize: 9, fontWeight: '900', letterSpacing: 1.35, marginBottom: 11 },
-  scene: { color: '#29251f', fontSize: 16, lineHeight: 25 },
-  thinkingRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
-  thinkingText: { color: '#765c36', fontSize: 11, fontWeight: '700' },
-  skipAIButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#816d4e', paddingVertical: 9, paddingHorizontal: 10, marginTop: 13, backgroundColor: '#c3b18e' },
-  skipAIButtonText: { color: '#342b1d', fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
-  choice: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#24211c', borderRadius: 2, paddingVertical: 13, paddingHorizontal: 12, marginBottom: 8, borderWidth: 1, borderColor: '#5c4d39', minHeight: 52 },
-  choiceDisabled: { opacity: 0.5 },
-  choiceIndex: { color: '#aa8b58', fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
-  choiceText: { color: '#e5d8bf', fontSize: 14, lineHeight: 21, flex: 1 },
-  choiceArrow: { color: '#bba071', fontSize: 23, marginLeft: 3 },
-  customRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8, marginTop: 4 },
-  customInput: { flex: 1, backgroundColor: '#181613', color: '#eee2cc', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 3, borderWidth: 1, borderColor: '#63513a', minHeight: 48, fontSize: 14 },
-  customBtn: { backgroundColor: '#6a5435', borderRadius: 3, paddingHorizontal: 17, justifyContent: 'center', borderWidth: 1, borderColor: '#b08e57', minWidth: 66, alignItems: 'center' },
-  customBtnText: { color: '#f5e8cd', fontWeight: '900', letterSpacing: 0.8 },
-  endingNote: { color: '#b9a78a', fontSize: 12, lineHeight: 18, padding: 14, backgroundColor: '#201d18', borderWidth: 1, borderColor: '#514638' },
-  footer: { color: '#817867', fontSize: 11, lineHeight: 17, marginTop: 24 },
-});
+const s=StyleSheet.create({
+ root:{flex:1},center:{flex:1,alignItems:'center',justifyContent:'center',padding:24},menuContent:{paddingHorizontal:24,paddingBottom:30,flexGrow:1,justifyContent:'center'},pageContent:{padding:20,paddingBottom:36},button:{borderWidth:1,borderRadius:9,alignItems:'center',justifyContent:'center',paddingHorizontal:14,minHeight:48},buttonText:{fontWeight:'900',letterSpacing:1.1},eyebrow:{fontSize:10,fontWeight:'900',letterSpacing:2},title:{fontSize:27,fontWeight:'900',letterSpacing:1.2},label:{fontSize:11,fontWeight:'900',letterSpacing:1.3,marginBottom:7},input:{borderWidth:1,borderRadius:8,paddingHorizontal:12,paddingVertical:11,fontSize:15},story:{fontFamily:Platform.OS==='ios'?'Georgia':'serif',lineHeight:27,marginBottom:18},choice:{borderWidth:1,borderRadius:9,padding:13,marginBottom:9},meter:{flex:1,borderWidth:1,borderRadius:7,padding:7,backgroundColor:'#171512'},pause:{width:42,height:42,borderWidth:1,borderRadius:9,alignItems:'center',justifyContent:'center'},chip:{borderWidth:1,borderRadius:14,paddingHorizontal:10,paddingVertical:7},toggle:{borderBottomWidth:1,paddingVertical:13,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},section:{fontSize:13,fontWeight:'900',letterSpacing:1.5,marginTop:20,marginBottom:10},stat:{borderWidth:1,borderRadius:8,padding:13,marginBottom:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},modalScrim:{position:'absolute',left:0,right:0,top:0,bottom:0,backgroundColor:'#000c',justifyContent:'center',padding:22},dicePanel:{borderWidth:1,borderRadius:18,padding:20,alignItems:'center'},});

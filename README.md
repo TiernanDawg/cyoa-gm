@@ -1,52 +1,25 @@
-# CYOA GM
+# DeadEnd
+**Every path ends somewhere.**
 
-A portrait iPhone choose-your-own-adventure horror game with branching scenes, locally resolved d20 checks, health/sanity, inventory, randomized opening styles, and optional AI narration for custom actions.
+DeadEnd is a portrait-first survival-horror adventure with a local branching engine and optional AI narration. The game remains playable without an API key or network connection. The original tale is **The Dark Below**; new runs can vary their style and premise.
 
-## AI setup
-
-1. Open **AI & story settings**.
-2. Enable **Use live AI narrator** and choose the provider that issued your key.
-3. Select a model from the dropdown, enter your key, then tap **TEST AI CONNECTION**.
-4. Tap **SAVE & CLOSE SETTINGS**, then choose **New story** to generate an AI-written opening.
-
-Google Gemini is the default provider. The default model is `gemini-3.5-flash-lite`, selected as a lightweight option for testing with a free Google AI Studio API key; `gemini-3.8-flash` and `gemini-3.6-flash` are also available in the model picker. Create a key with [Google AI Studio](https://aistudio.google.com/api-keys). Google’s free tier has model-specific rate limits and availability can vary by project; see the [official Gemini API pricing and free-tier details](https://ai.google.dev/gemini-api/docs/pricing). OpenRouter and custom OpenAI Chat Completions-compatible endpoints are also supported. Keys are provider-specific; a Google key will not work with OpenRouter or another provider.
-
-The connection test has a 12-second timeout and narration requests have an 18-second timeout. While narration is pending, **STOP WAITING · USE BUILT-IN STORY** returns you to the built-in scene immediately. A late AI response cannot overwrite a newer action. Network issues, invalid keys, unsupported model IDs and provider quota limits can still prevent live AI from responding.
-
-## Story customization
-
-- **Randomize on every new story** selects one of four opening styles: Dark Folktale, Psychological Dread, Cosmic Horror, or Gothic Mystery.
-- Choose a specific style to reuse it.
-- Use **Custom premise or story direction** to give the AI a premise, setting details, tone, or mystery. Start **New story** after saving to generate a tailored opening.
-- The local engine remains authoritative for dice, health, sanity, inventory and terminal states. AI may narrate consequences for listed choices and select a valid existing map destination for freeform actions, but it cannot create new map node IDs.
-
-## Privacy and key safety
-
-The API key stays in app memory for the current app session. It is not written to this GitHub repository or persistent storage. A key used by a client-side app can still be extracted from the installed app or device traffic; this is intended for personal use. Do not commit a real key. For public distribution, put the provider key behind a server you control.
-
-## Interface direction
-
-The UI uses a dark, worn-wood palette with aged-paper story panels, restrained amber dice accents, muted health/sanity meters, compact archival labels, and high-contrast action rows. The visual direction is informed by the candlelit tabletop and parchment atmosphere of horror games, without including their art or assets. The story uses a keyboard-aware scrolling layout; the action composer dismisses the keyboard when submitted and remains available after AI errors.
-
-## Build an unsigned IPA with GitHub Actions
-
-1. Open [Actions](https://github.com/TiernanDawg/cyoa-gm/actions).
-2. Pushes to `main` and manual dispatches trigger **Build unsigned iOS IPA**.
-3. Download the `CYOA-GM-unsigned-IPA` artifact from a successful workflow run.
-
-The GitHub-hosted macOS runner exports the JavaScript bundle, generates the iOS project, compiles the app, and packages an unsigned IPA. The artifact does not sign or install the app. Import it into your preferred supported sideloading tool and sign it before installation.
-
-## Build locally
-
-Requires Node.js 20. On macOS, install dependencies and start Expo:
-
+## Build
+The project uses Expo SDK 52 / React Native 0.76.5 and retains bundle identifier `com.tiernan.cyoagm`. On Node 20:
 ```sh
 npm install
-npx expo start
-```
+npx expo install --check
+npm run audio:generate
+npm run audio:verify
+npm test
+npx expo export --platform ios
+``
+GitHub Actions builds an unsigned IPA named `DeadEnd-unsigned.ipa`. It is not signed for installation; sign it with your personal sideloading workflow.
 
-For native iOS builds, run `npx expo prebuild --platform ios` on macOS, then build the generated `ios/CYOAGM.xcworkspace`.
+## AI narrator
+AI is optional. Add a provider key in Options → AI Connection. Never commit keys or paste them into issues. Client-side keys can be extracted from a sideloaded app. Requests send the scene and relevant game state to the provider. Built-in mode does not send game data anywhere. Keys are session-only and excluded from settings and save files.
 
-## App identifier
+## Audio
+`scripts/generate-audio.js` synthesizes original, modest atmospheric mono WAVs without third-party audio packages. Expect restrained ambience and UI cues, not cinematic sound design. The GitHub workflow generates and verifies the audio pack before the export. Missing or failed audio must not prevent built-in gameplay.
 
-Bundle identifier: `com.tiernan.cyoagm` (configured in `app.json`).
+## Privacy
+No ads, analytics, or tracking are included. Local saves, profile data and settings are stored on-device. Background audio and special entitlements are not required. The currently uploaded icon image is 256×256 WEBP rather than the requested 1024×1024 PNG; the app continues to use Expo's default icon until the full-resolution PNG is supplied at `assets/icon.png`.
