@@ -22,6 +22,7 @@ assert.strictEqual(capped.state.inventory.length,3,'inventory must enforce the t
 assert.strictEqual(capped.state.flags.inventoryFull,true,'full inventory must record that an item could not be carried');
 const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices','buildTaleMap']);
 assert.strictEqual(tales.TALE_STYLES.length,6);assert.strictEqual(tales.pickTale('Cosmic Horror','abc').style,'Cosmic Horror');
+assert(tales.buildTaleMap({...tales.pickTale('Gothic Mystery','intro-seed'),opening:'UNIQUE OPENING CHECK'}).tale_0.scene.includes('UNIQUE OPENING CHECK'),'first story node must contain the actual selected opening');
 assert.notStrictEqual(tales.pickTale('Dark Folktale','seed1').opening,tales.pickTale('Dark Folktale','seed2').opening);
 assert.strictEqual(tales.storyChoices(tales.pickTale('Gothic Mystery','1'),'x',1).length,3);
 for(const style of tales.TALE_STYLES){const map=tales.buildTaleMap(tales.pickTale(style,'test-seed'));assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_')&&!k.startsWith('tale_ending_')).length,12);assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_ending_')).length,3);for(const [id,node] of Object.entries(map)){assert(node.scene.length>40,id+' needs scene text');for(const choice of node.choices)assert(map[choice.next],id+' has invalid route '+choice.next);}}
@@ -51,6 +52,10 @@ assert(narratorSource.includes('ALLOWED_GEMINI_MODELS'),'Gemini model allowlist 
 assert(!narratorSource.includes('openrouter.ai')&&!narratorSource.includes('api.openai.com'),'only Google endpoints may exist');
 const appSource=fs.readFileSync(path.join(__dirname,'..','App.js'),'utf8');
 assert(appSource.includes('GOOGLE AI STUDIO API KEY'),'app must ask for a Google key');
+assert(appSource.includes('buildTaleMap')&&appSource.includes("fresh.nodeId='tale_0'"),'new runs must start on the generated tale map');
+assert(appSource.includes('Object.keys(THEMES)'),'all available themes must be selectable');
+const themeSource=fs.readFileSync(path.join(__dirname,'..','src/ui/theme.js'),'utf8');
+for(const name of ['Wood','Dashboard','PlayStation','Nintendo','Xbox','Light','OLED'])assert(new RegExp('\\b'+name+':').test(themeSource),'missing selectable theme '+name);
 assert(!appSource.includes('OPENROUTER API KEY')&&!appSource.includes('openrouter/free'),'non-Google AI must be removed from UI');
 const voice=load('src/voice/controller.js',['createVoiceState','voiceTransition','restoreVoicePosition','audioCacheKey']);
 let vs=voice.createVoiceState({provider:'premium',queue:['a','b']});vs=voice.voiceTransition(vs,'play',{passageId:'p1',queue:['a','b']});vs=voice.voiceTransition(vs,'loaded');assert.strictEqual(vs.status,'playing');
