@@ -1,3 +1,4 @@
+import { PREMISES } from './premises';
 export const TALE_STYLES=['Dark Folktale','Psychological Dread','Cosmic Horror','Gothic Mystery','Occult Conspiracy','Survival Realism'];
 const BIBLES={
 'Dark Folktale':{settings:['a flooded mining village','a manor swallowed by peat','a chapel beneath a ruined bridge','a mill that turns without a river'],threats:['a bell that rings from underground','a caretaker who has no reflection','a procession of wet footprints','a door that appears only after midnight'],truths:['the village has traded memories for safe harvests','the building rebuilds itself around a buried witness','the bell marks people who have not died yet']},
@@ -10,12 +11,9 @@ function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i)
 function rng(seed){let x=seed>>>0;return()=>{x=(x+0x6D2B79F5)|0;let t=Math.imul(x^x>>>15,1|x);t=(t+Math.imul(t^t>>>7,61|t))^t;return ((t^t>>>14)>>>0)/4294967296;};}
 export function pickTale(style,seed='1',premise=''){
  const actual=TALE_STYLES.includes(style)?style:TALE_STYLES[hash(String(seed))%TALE_STYLES.length];
- const bible=BIBLES[actual],random=rng(hash(String(seed)+actual+premise)),choose=list=>list[Math.floor(random()*list.length)];
- const setting=choose(bible.settings),threat=choose(bible.threats),truth=choose(bible.truths);
- const brief=premise.trim()?'Your own premise shadows every detail: '+premise.trim().slice(0,240)+'. ':'';
- const opening=actual==='Survival Realism'?brief+'You reach '+setting+'. The emergency light is down to a thin red strip. '+threat[0].toUpperCase()+threat.slice(1)+'. Your immediate priority is simple: preserve light, find a safe route, and establish whether anyone can hear you.':
- brief+'You arrive at '+setting+'. The first thing you notice is '+threat+'. The detail is too specific to dismiss, yet every ordinary explanation leaves something out. Somewhere nearby, a small sound repeats at an interval just long enough to make you doubt you heard it. You have no reliable map, only the things you can observe and the choices you make.';
- return {style:actual,subtitle:actual==='Dark Folktale'?'The Dark Below':actual,seed:String(seed),setting,threat,secretTruth:truth,motifs:[setting,threat,'a repeated sound','a record with missing lines'],npcs:['The reluctant witness','The person who knows the route'],opening,endingConditions:['discover the central truth','reach a viable exit','lose health or sanity beyond recovery']};
+ const random=rng(hash(String(seed)+actual+premise)),selected=PREMISES[Math.floor(random()*PREMISES.length)],custom=String(premise||'').trim();
+ const opening='The '+selected.setting.replace(/^a |^an |^the /i,'')+' is quiet at this hour. '+selected.wrongDetail+' Your phone has a working flashlight and '+(4+Math.floor(random()*77))+'% battery. You check the nearest way out. Then you notice the same detail somewhere it cannot be.';
+ return {style:actual,subtitle:custom?custom.slice(0,70):selected.title,seed:String(seed),premiseId:selected.id,setting:selected.setting,threat:selected.threatType,wrongDetail:selected.wrongDetail,secretTruth:selected.truth,storyBible:{protagonistSituation:'Alone after hours, with a phone and ordinary tools.',setting:selected.setting,wrongDetail:selected.wrongDetail,truth:selected.truth,people:[{name:'Mara',motive:'wants to keep the incident quiet'},{name:'Eli',motive:'needs someone to verify what happened'}],threatRule:'The threat only acts when the wrong detail is ignored twice.',midStoryTurn:'An early clue is revealed to have been deliberately planted.',endings:['escape','truth','sacrifice']},motifs:[selected.setting,selected.wrongDetail,'a record with missing lines'],npcs:['Mara, a reluctant witness','Eli, who needs proof'],opening,endingConditions:['discover the central truth','reach a viable exit','lose health or sanity beyond recovery']};
 }
 export function storyChoices(tale,nodeId,turn=0){
  const r=rng(hash(tale.seed+nodeId+turn)),choose=a=>a[Math.floor(r()*a.length)];

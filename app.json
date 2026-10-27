@@ -12,6 +12,7 @@
     },
     "ios": {
       "supportsTablet": false,
+      "infoPlist": { "UIBackgroundModes": ["audio"] },
       "bundleIdentifier": "com.tiernan.cyoagm"
     },
     "icon": "./assets/icon.png"

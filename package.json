@@ -7,10 +7,11 @@
     "start": "expo start",
     "ios": "expo start --ios",
     "prebuild": "expo prebuild",
-    "test": "node scripts/test-rules.js",
+    "test": "node scripts/test-rules.js && node scripts/lint-content.js",
     "audio:generate": "node scripts/generate-audio.js",
     "audio:verify": "node scripts/generate-audio.js --verify",
-    "postinstall": "node scripts/generate-audio.js"
+    "postinstall": "node scripts/generate-audio.js",
+    "lint:content": "node scripts/lint-content.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.1.0",
