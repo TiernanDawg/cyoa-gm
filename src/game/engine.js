@@ -47,10 +47,23 @@ export function applyChoice(state,choice){
 }
 const STOP_WORDS=new Set(['the','a','an','to','and','or','i','me','my','it','on','in','at','with','for','of','do','try','want','would','like','please','then','now','just']);
 function words(text){return text.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP_WORDS.has(w));}
+function explicitSelfInjury(action) {
+ return /\b(?:hit|strike|punch|kick|smash|slam|stab|cut|burn|shoot|hurt|injure|attack)\b.{0,70}\b(?:myself|my own (?:head|face|body|arm|leg|shoulder)|self)\b/i.test(action)
+  || /\b(?:myself|my own (?:head|face|body|arm|leg|shoulder))\b.{0,70}\b(?:hit|strike|punch|kick|smash|slam|stab|cut|burn|shoot|hurt|injure|attack)\b/i.test(action)
+  || /\b(?:swing|throw|drive)\b.{0,80}\b(?:into|at)\b.{0,30}\bmyself\b/i.test(action);
+}
+function healthRank(value) { return ({Full:0,Hurt:1,Critical:2,Dead:3})[value] ?? 0; }
+function applyNarratedPhysicalConsequences(next, action, beforeHealth) {
+ if (!explicitSelfInjury(action)) return;
+ // Explicitly narrated self-injury must affect the game even when the roll succeeds.
+ // Avoid charging a second injury when the roll already reduced health.
+ if (healthRank(next.health) <= healthRank(beforeHealth)) next.health = worsenHealth(beforeHealth);
+ next.flags = {...(next.flags||{}), selfInjury:true};
+}
 export function resolveCustomAction(state,rawAction,assessment=null){
  const action=String(rawAction||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,200);
  const node=(state.nodeMap&&state.nodeMap[state.nodeId])||getNode(state.nodeId);if(!node||!action)return null;
- const actionWords=new Set(words(action));
+ const beforeHealth=state.health;\n const actionWords=new Set(words(action));
  const scored=(node.choices||[]).map(choice=>{
   const choiceWords=words(choice.text);let score=choiceWords.reduce((sum,word)=>sum+(actionWords.has(word)?2:0),0);const text=action.toLowerCase();
   if(/\b(take|grab|pick up|collect|pocket)\b/.test(text)&&choice.effect?.item)score+=5;
@@ -68,7 +81,7 @@ export function resolveCustomAction(state,rawAction,assessment=null){
  const risk=/\b(run|climb|jump|force|fight|break|swim|cross)\b/i.test(action)?'high':'moderate';
  const dc=assessment?.dc||DC.Moderate;const roll={...resolveRoll(dc,mod),dc,modifier:mod};
  const next={...state,turn:(state.turn||0)+1,inventory:[...(state.inventory||[])],flags:{...(state.flags||{})},afflictions:[...(state.afflictions||[])],history:[...(state.history||[])],visited:[...(state.visited||[state.nodeId])]};
- applyRollConsequences(next,{stat,risk},roll);
+ applyRollConsequences(next,{stat,risk},roll);\n applyNarratedPhysicalConsequences(next,action,beforeHealth);
  next.nodeId=next.health==='Dead'?'ending_dead':next.sanity==='Lost'?'ending_lost':state.nodeId;
  next.history.push({action,from:state.nodeId,nodeId:next.nodeId,outcome:roll.outcome,roll:{...roll,dc:DC.Moderate,modifier:mod}});
  return {state:next,roll,nextNodeId:next.nodeId,matchedChoice:null};

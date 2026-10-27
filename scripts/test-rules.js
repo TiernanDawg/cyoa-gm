@@ -9,6 +9,10 @@ assert.strictEqual(realism.assessCustomAction('unlock the door',{inventory:[]}).
 assert.strictEqual(realism.assessCustomAction('carefully listen',{sanity:'Steady'}).stat,'sanity');
 assert.strictEqual(realism.getOddsPercent(10,0),55);
 assert.strictEqual(realism.consequenceFor('critical_failure','health').damage,2);
+const engine=load('src/game/engine.js',['createInitialState','resolveCustomAction']);
+const selfHit=engine.resolveCustomAction(engine.createInitialState(),'I swing the iron pipe into my own head',{dc:10,stat:'health',modifier:0,risk:'moderate'});
+assert.notStrictEqual(selfHit.state.health,'Full','explicit self-injury must reduce health even on a successful roll');
+assert.strictEqual(selfHit.state.flags.selfInjury,true,'self-injury should be recorded in state');
 const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices','buildTaleMap']);
 assert.strictEqual(tales.TALE_STYLES.length,6);assert.strictEqual(tales.pickTale('Cosmic Horror','abc').style,'Cosmic Horror');
 assert.notStrictEqual(tales.pickTale('Dark Folktale','seed1').opening,tales.pickTale('Dark Folktale','seed2').opening);
