@@ -20,6 +20,9 @@ assert.notStrictEqual(shoulderHit.state.health,'Full','left/right body-part self
 const capped=engine.resolveCustomAction({...engine.createInitialState(),inventory:['flashlight','key','map'],nodeMap:{start:{choices:[{text:'Take the lantern',next:'start',effect:{item:'lantern'}}]}}},'take the lantern',{dc:10,stat:'health',modifier:0,risk:'low'});
 assert.strictEqual(capped.state.inventory.length,3,'inventory must enforce the three-item carry limit');
 assert.strictEqual(capped.state.flags.inventoryFull,true,'full inventory must record that an item could not be carried');
+const unrelated=engine.resolveCustomAction({...engine.createInitialState(),nodeMap:{start:{choices:[{text:'Inspect the fresh evidence before committing to a route.',next:'evidence',dc:10,stat:'sanity'}]},evidence:{scene:'evidence',choices:[]}},nodeId:'start'},'I inspect the locked door',{dc:10,stat:'sanity',modifier:0,risk:'low'});
+assert.strictEqual(unrelated.matchedChoice,null,'a vaguely similar freeform action must not be forced into an unrelated story choice');
+assert.strictEqual(unrelated.nextNodeId,'start','unmatched freeform actions must remain in the current context until contextual follow-up choices are shown');
 const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices','buildTaleMap']);
 assert.strictEqual(tales.TALE_STYLES.length,6);assert.strictEqual(tales.pickTale('Cosmic Horror','abc').style,'Cosmic Horror');
 assert(tales.buildTaleMap({...tales.pickTale('Gothic Mystery','intro-seed'),opening:'UNIQUE OPENING CHECK'}).tale_0.scene.includes('UNIQUE OPENING CHECK'),'first story node must contain the actual selected opening');
