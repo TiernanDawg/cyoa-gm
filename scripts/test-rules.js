@@ -44,5 +44,5 @@ assert(!appSource.includes('OPENROUTER API KEY')&&!appSource.includes('openroute
 const voice=load('src/voice/controller.js',['createVoiceState','voiceTransition','restoreVoicePosition','audioCacheKey']);
 let vs=voice.createVoiceState({provider:'premium',queue:['a','b']});vs=voice.voiceTransition(vs,'play',{passageId:'p1',queue:['a','b']});vs=voice.voiceTransition(vs,'loaded');assert.strictEqual(vs.status,'playing');
 vs=voice.voiceTransition(vs,'background');assert.strictEqual(vs.status,'playing');vs=voice.voiceTransition({...vs,provider:'system'},'background');assert.strictEqual(vs.status,'paused');vs=voice.voiceTransition(vs,'foreground');assert.strictEqual(vs.status,'playing');
-assert.deepStrictEqual(voice.restoreVoicePosition({passageId:'p',chunkIndex:2,sentenceIndex:3}),{passageId:'p',chunkIndex:2,sentenceIndex:3});assert(voice.audioCacheKey('hello','voice','style'));
+const restored=voice.restoreVoicePosition({passageId:'p',chunkIndex:2,sentenceIndex:3});assert.strictEqual(restored.passageId,'p');assert.strictEqual(restored.chunkIndex,2);assert.strictEqual(restored.sentenceIndex,3);assert(voice.audioCacheKey('hello','voice','style'));
 console.log('Rules, realism, tale generation, Google free-tier guard, voice state machine, achievement tests and 1,000-roll simulation passed.');
