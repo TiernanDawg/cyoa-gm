@@ -49,7 +49,7 @@ const STOP_WORDS=new Set(['the','a','an','to','and','or','i','me','my','it','on'
 function words(text){return text.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP_WORDS.has(w));}
 export function resolveCustomAction(state,rawAction,assessment=null){
  const action=String(rawAction||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,200);
- const node=getNode(state.nodeId);if(!node||!action)return null;
+ const node=(state.nodeMap&&state.nodeMap[state.nodeId])||getNode(state.nodeId);if(!node||!action)return null;
  const actionWords=new Set(words(action));
  const scored=(node.choices||[]).map(choice=>{
   const choiceWords=words(choice.text);let score=choiceWords.reduce((sum,word)=>sum+(actionWords.has(word)?2:0),0);const text=action.toLowerCase();
@@ -73,4 +73,4 @@ export function resolveCustomAction(state,rawAction,assessment=null){
  next.history.push({action,from:state.nodeId,nodeId:next.nodeId,outcome:roll.outcome,roll:{...roll,dc:DC.Moderate,modifier:mod}});
  return {state:next,roll,nextNodeId:next.nodeId,matchedChoice:null};
 }
-export function getCurrentNode(state){return getNode(state.nodeId);}
+export function getCurrentNode(state){return (state?.nodeMap&&state.nodeMap[state.nodeId])||getNode(state?.nodeId);}

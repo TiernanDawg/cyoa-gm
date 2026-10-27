@@ -25,3 +25,47 @@ export function storyChoices(tale,nodeId,turn=0){
  {id:'improvise',label:choose(['Try a careful improvised solution','Use the surroundings to gain leverage','Make a quiet attempt to change the situation']),category:'craft',tier:'hard',risk:'high',stat:'health',dc:16}
  ];
 }
+
+
+const LOCATION_BEATS = [
+  ['Threshold','The entrance seals behind you with a soft, deliberate click.'],
+  ['First Evidence','A fresh trace contradicts the story you were told.'],
+  ['Narrow Passage','The route pinches down; turning around is possible, but no longer easy.'],
+  ['Witness','A frightened witness offers one useful fact and one obvious lie.'],
+  ['Resource Room','You find supplies left by someone who expected to return.'],
+  ['False Exit','An exit sign points toward a space that should not exist.'],
+  ['Recorded Warning','A recording describes the next sound before it happens.'],
+  ['Hidden Route','A seam in the structure reveals a path omitted from every map.'],
+  ['Confrontation','The threat finally responds to your presence instead of merely following.'],
+  ['Cost','The safest option requires sacrificing something you have protected.'],
+  ['Revelation','The clues form a coherent explanation, though it is worse than ignorance.'],
+  ['Final Approach','Three routes remain: escape, pursue the truth, or risk everything.']
+];
+const ENDING_BEATS = {
+  escape: {title:'A Narrow Escape',scene:'You force your way into open air. The world appears ordinary again, but one small detail proves the place has not finished with you.'},
+  truth: {title:'The Truth Beneath',scene:'The final evidence fits together. You understand what happened and why the place kept you alive long enough to discover it. Understanding is not the same as safety.'},
+  sacrifice: {title:'The Price',scene:'You stop the immediate danger at a cost that cannot be reversed. The silence afterward feels earned, but it does not feel like victory.'}
+};
+export function buildTaleMap(tale) {
+  const map = {};
+  const title = tale.subtitle || tale.style;
+  const setting = tale.setting || 'the sealed place';
+  const threat = tale.threat || 'a sound from the dark';
+  const truth = tale.secretTruth || 'the place is keeping a record of you';
+  for (let i=0;i<LOCATION_BEATS.length;i++) {
+    const [beat,detail]=LOCATION_BEATS[i];
+    const nextA = i===11 ? 'tale_ending_escape' : 'tale_'+(i+1);
+    const nextB = i===11 ? 'tale_ending_truth' : 'tale_'+Math.min(11,i+2);
+    const nextC = i===11 ? 'tale_ending_sacrifice' : 'tale_'+Math.min(11,i+3);
+    map['tale_'+i] = {
+      scene: title+'. '+beat+'. '+detail+' You are inside '+setting+'. '+(i%3===0?'Nearby, '+threat+'. ':i%3===1?'A clue points toward the explanation: '+truth+'. ':'Your earlier decisions have changed what feels safe. ')+'Look for details that can be tested; the place rewards neither panic nor blind confidence.',
+      choices: [
+        {text:i===11?'Take the exposed route toward the exit.':'Investigate the evidence before moving on.',next:nextA,dc:10+i%4,stat:'sanity',effect:i===4?{item:'emergency supplies'}:undefined},
+        {text:i===11?'Follow the clues and accept the truth.':'Take the more dangerous route and keep moving.',next:nextB,dc:13+i%5,stat:i%2?'health':'sanity',risk:'moderate',effect:i===7?{item:'marked map'}:undefined},
+        {text:i===11?'Make one final desperate attempt.':'Spend a resource to create a safer opening.',next:nextC,dc:16+i%4,stat:'health',risk:'high',effect:i===4?{item:'flare'}:undefined}
+      ]
+    };
+  }
+  for (const [key,ending] of Object.entries(ENDING_BEATS)) map['tale_ending_'+key]={scene:ending.scene+' The case file is marked: '+ending.title+'.',choices:[]};
+  return map;
+}
