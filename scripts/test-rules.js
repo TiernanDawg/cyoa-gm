@@ -15,4 +15,13 @@ assert.notStrictEqual(tales.pickTale('Dark Folktale','seed1').opening,tales.pick
 assert.strictEqual(tales.storyChoices(tales.pickTale('Gothic Mystery','1'),'x',1).length,3);
 const achievements=load('src/game/achievements.js',['ACHIEVEMENTS','awardAchievements']);
 assert(achievements.ACHIEVEMENTS.length>=25);assert(achievements.awardAchievements({}, {turns:1}).achievements.includes('first_steps'));
-console.log('Rules, realism, tale generation, and achievement tests passed.');
+
+const deterministic=Math.random;
+let rolls=0, outcomes=new Set();
+Math.random=()=>{rolls++;return ((rolls*7919)%1000)/1000;};
+for(let i=0;i<1000;i++){const result=rules.resolveRoll([5,10,13,16,19][i%5],[-6,-2,0,2,6][i%5]);assert(result.raw>=1&&result.raw<=20);assert.strictEqual(result.total,result.raw+[-6,-2,0,2,6][i%5]);assert(['critical_failure','critical_success','success','partial_success','failure'].includes(result.outcome));outcomes.add(result.outcome);}
+Math.random=deterministic;
+assert.strictEqual(rolls,1000);
+assert(outcomes.has('critical_failure')&&outcomes.has('critical_success'),'simulation must exercise critical outcomes');
+
+console.log('Rules, realism, tale generation, achievement tests and 1,000-roll simulation passed.');
