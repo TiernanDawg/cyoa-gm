@@ -76,7 +76,7 @@ export function resolveCustomAction(state,rawAction,assessment=null){
   if(/\b(enter|open|go|walk|descend|follow|continue)\b/.test(text)&&/enter|open|go |walk|descend|follow|continue|take the door|take the slope/.test(choice.text.toLowerCase()))score+=3;
   return {choice,score};
  }).sort((a,b)=>b.score-a.score);
- if(scored.length&&scored[0].score>=2){const matched=scored[0].choice;const result=applyChoice(state,{...matched,text:action,...(assessment?{dc:assessment.dc,stat:assessment.stat,modifier:assessment.modifier,modifierIsTotal:true,risk:assessment.risk}: {})});applyNarratedPhysicalConsequences(result.state,action,beforeHealth);if(result.state.health==='Dead')result.state.nodeId='ending_dead';result.state.history[result.state.history.length-1].action=action;result.matchedChoice=scored[0].choice.text;return result;}
+ if(scored.length&&scored[0].score>=7){const matched=scored[0].choice;const result=applyChoice(state,{...matched,text:action,...(assessment?{dc:assessment.dc,stat:assessment.stat,modifier:assessment.modifier,modifierIsTotal:true,risk:assessment.risk}: {})});applyNarratedPhysicalConsequences(result.state,action,beforeHealth);if(result.state.health==='Dead')result.state.nodeId='ending_dead';result.state.history[result.state.history.length-1].action=action;result.matchedChoice=scored[0].choice.text;return result;}
  const observation=/look|listen|search|feel|study|inspect|examine|read|smell|wait|hide|think|remember/i.test(action);
  const stat=observation?'sanity':'health';
  const mod=assessment?assessment.modifier:(stat==='health'?(HEALTH_MODIFIERS[state.health]??0):(SANITY_MODIFIERS[state.sanity]??0));
