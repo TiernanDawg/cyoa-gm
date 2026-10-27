@@ -34,4 +34,11 @@ Math.random=deterministic;
 assert.strictEqual(rolls,1000);
 assert(outcomes.has('critical_failure')&&outcomes.has('critical_success'),'simulation must exercise critical outcomes');
 
-console.log('Rules, realism, tale generation, achievement tests and 1,000-roll simulation passed.');
+const narratorSource=fs.readFileSync(path.join(__dirname,'..','src/llm/narrator.js'),'utf8');
+assert(narratorSource.includes("provider !== 'openrouter'"),'paid providers must be blocked');
+assert(narratorSource.includes("FREE_MODEL_ONLY = 'openrouter/free'"),'free router must be the only allowed model');
+assert(!narratorSource.includes('DEFAULT_GOOGLE_MODEL'),'paid-tier provider defaults must not remain');
+const appSource=fs.readFileSync(path.join(__dirname,'..','App.js'),'utf8');
+assert(appSource.includes("model:'openrouter/free'"),'app must default to free model router');
+assert(!appSource.includes("'compatible'"),'custom paid-compatible providers must be removed from UI');
+console.log('Rules, realism, tale generation, free-tier AI guard, achievement tests and 1,000-roll simulation passed.');

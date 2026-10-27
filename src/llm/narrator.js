@@ -1,7 +1,8 @@
 import { MAP } from '../game/map';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_GOOGLE_MODEL = 'gemini-3.5-flash-lite';
+const DEFAULT_FREE_MODEL = 'openrouter/free';
+const FREE_MODEL_ONLY = 'openrouter/free';
 const DEFAULT_REQUEST_TIMEOUT_MS = 18000;
 
 function cleanErrorMessage(error, apiKey) {
@@ -12,7 +13,7 @@ function cleanErrorMessage(error, apiKey) {
 
 function prompts(scene, action, outcome, context = {}) {
   const style = context.storyStyle || 'Slow-burn dark folktale';
-  const premise = context.customPremise || 'An underground passage whose layout and history seem to change when unobserved.';
+  const premise = context.customPremise || 'A grounded modern setting with one specific detail that does not fit.';
   const currentState = {
     location: context.nodeId || 'unknown',
     health: context.health || 'Full',
@@ -48,11 +49,13 @@ function prompts(scene, action, outcome, context = {}) {
 
 async function requestText(system, user, apiKey, model, provider, endpoint, maxTokens, jsonMode, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
   const key = apiKey && apiKey.trim();
-  if (!key) throw new Error('Missing API key. Open AI Settings and enter a key for the selected provider.');
+  if (!key) throw new Error('Add an OpenRouter API key to use free AI narration.');
+  if (provider !== 'openrouter') throw new Error('Only OpenRouter free-model routing is enabled. Paid providers are blocked.');
+  if ((model || DEFAULT_FREE_MODEL).trim() !== FREE_MODEL_ONLY) throw new Error('Paid or custom models are disabled. Select openrouter/free.');
 
   let url, headers, body;
   if (provider === 'google') {
-    const modelId = (model || DEFAULT_GOOGLE_MODEL).trim().replace(/^models\//, '');
+    const modelId = (model || DEFAULT_FREE_MODEL).trim().replace(/^models\//, '');
     if (!modelId) throw new Error('Select a Gemini model.');
     url = GEMINI_URL + '/' + encodeURIComponent(modelId) + ':generateContent';
     headers = { 'x-goog-api-key': key, 'Content-Type': 'application/json' };
@@ -73,7 +76,7 @@ async function requestText(system, user, apiKey, model, provider, endpoint, maxT
   } else {
     url = provider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : (endpoint || '').trim();
     if (!/^https?:\/\/\S+/i.test(url)) throw new Error('Endpoint must be a valid HTTP(S) URL.');
-    const modelId = (model || (provider === 'openrouter' ? 'openrouter/free' : 'gpt-4o-mini')).trim();
+    const modelId = 'openrouter/free';
     if (!modelId) throw new Error('Select a model.');
     headers = { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' };
     if (provider === 'openrouter') {
@@ -173,7 +176,7 @@ export async function narrate(
   action,
   outcome,
   apiKey,
-  model = DEFAULT_GOOGLE_MODEL,
+  model = DEFAULT_FREE_MODEL,
   provider = 'google',
   endpoint = 'https://api.openai.com/v1/chat/completions',
   context = {}
@@ -197,7 +200,7 @@ export async function narrateFreeform(
   action,
   outcome,
   apiKey,
-  model = DEFAULT_GOOGLE_MODEL,
+  model = DEFAULT_FREE_MODEL,
   state = {},
   provider = 'google',
   endpoint = 'https://api.openai.com/v1/chat/completions',
@@ -259,7 +262,7 @@ export async function narrateFreeform(
 export async function generateOpening(
   baseScene,
   apiKey,
-  model = DEFAULT_GOOGLE_MODEL,
+  model = DEFAULT_FREE_MODEL,
   provider = 'google',
   endpoint = 'https://api.openai.com/v1/chat/completions',
   storyStyle = 'Slow-burn dark folktale',
@@ -269,21 +272,21 @@ export async function generateOpening(
     'You are writing the opening passage of a replayable mobile horror adventure.',
     'Write 120–170 words in second person present tense with vivid, restrained sensory detail.',
     'Create a distinctive, coherent opening, seed one mystery and one immediate danger, and end with a specific detail the player can act on.',
-    'Keep the underlying physical layout compatible with a narrow passage, a door, a downward route and a way back.',
+    'Use a grounded, relatable modern setting. Do not default to doors, underground passages, corridors, tunnels, or descending.',
     'Do not add dialogue options, headings, markdown or facts about player inventory.'
   ].join(' ');
   const user = [
     'Style: ' + storyStyle,
-    'Custom premise: ' + (customPremise || 'A disquieting underground passage whose layout seems to change when unobserved.'),
+    'Custom premise: ' + (customPremise || 'A realistic everyday situation with one wrong detail and plausible human behavior.'),
     'Branching map anchor: ' + baseScene,
-    'Write a fresh opening variation for a new playthrough.'
+    'Write a fresh opening variation for a new playthrough. Start with an ordinary, specific observation, then one wrong detail. Short sentences. Avoid stock horror phrases. End on a concrete hook.'
   ].join('\n\n');
   return requestText(system, user, apiKey, model, provider, endpoint, 460, false);
 }
 
 export async function testConnection(
   apiKey,
-  model = DEFAULT_GOOGLE_MODEL,
+  model = DEFAULT_FREE_MODEL,
   provider = 'google',
   endpoint = 'https://api.openai.com/v1/chat/completions'
 ) {
