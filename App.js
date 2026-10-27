@@ -64,11 +64,12 @@ export default function App(){
    const runId=++op.current;Keyboard.dismiss();const fresh=createInitialState();const selected=settings.storyStyle==='Randomize'?randomStyle():settings.storyStyle;
    setState(fresh);setStyle(selected);setPremise(settings.premise||premise);setRoll(null);setScreen('loading');setBusy(true);
    const seed=settings.seed||String(Math.floor(Math.random()*999999)+1);
-   const tale=pickTale(selected,seed,settings.premise||premise);
+   const chosenPremise=selectedPremise||taleCards[0]||null;
+   const tale=pickTale(selected,seed,settings.premise||premise||chosenPremise?.setting||'');
    let opening=tale.opening||OPENINGS[selected]||OPENINGS['Dark Folktale'];
    if(settings.aiEnabled&&settings.apiKey.trim()){try{opening=await generateOpening(opening,settings.apiKey,settings.model,settings.provider,settings.endpoint,selected,(settings.premise||premise)+' Seed: '+seed+'. Setting: '+(settings.setting||'unknown')).catch(()=>opening);}catch{}}
    if(runId!==op.current)return;
-   setScene(opening);saveRun('autosave',{state:fresh,scene:opening,style:selected,premise:settings.premise||premise,turn:0,settings:{...settings,apiKey:''}}).then(refreshSaves).catch(()=>{});setBusy(false);setProfile(p=>{const next={...p,runs:(p.runs||0)+1,lastSeed:seed};writeProfile(next).catch(()=>{});return next;});setScreen('game');
+   setScene(opening);saveRun('autosave',{state:fresh,scene:opening,style:selected,premise:settings.premise||premise,turn:0,settings:{...settings,apiKey:''}}).then(refreshSaves).catch(()=>{});setBusy(false);setProfile(p=>{const premiseHistory=[...(p.premiseHistory||[]),...(chosenPremise?[{id:chosenPremise.id,setting:chosenPremise.setting,threatType:chosenPremise.threatType}]:[])].slice(-10);const next={...p,runs:(p.runs||0)+1,lastSeed:seed,premiseHistory};writeProfile(next).catch(()=>{});return next;});setScreen('game');
  };
  const updateScene=async(nextState,nextId,actionText,outcome,runId,customAction=false,sourceScene=scene)=>{
    const updated={...nextState,nodeId:nextId};setState(updated);const base=getCurrentNode(updated)?.scene||scene;
