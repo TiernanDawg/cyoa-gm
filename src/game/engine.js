@@ -36,7 +36,7 @@ export function applyChoice(state,choice){
  const stat=choice.stat==='sanity'?'sanity':'health';
  const base=stat==='health'?(HEALTH_MODIFIERS[next.health]??0):(SANITY_MODIFIERS[next.sanity]??0);
  const repeat=next.repeatActions[choice.text]||0;
- const modifier=Math.max(-6,Math.min(6,base+(choice.modifier||0)-repeat*2));
+ const modifier=choice.modifierIsTotal?Math.max(-6,Math.min(6,choice.modifier||0)):Math.max(-6,Math.min(6,base+(choice.modifier||0)-repeat*2));
  const roll=choice.dc?{...resolveRoll(choice.dc,modifier),dc:choice.dc,modifier}:null;
  applyRollConsequences(next,choice,roll);
  next.repeatActions[choice.text]=repeat+1;
@@ -47,7 +47,7 @@ export function applyChoice(state,choice){
 }
 const STOP_WORDS=new Set(['the','a','an','to','and','or','i','me','my','it','on','in','at','with','for','of','do','try','want','would','like','please','then','now','just']);
 function words(text){return text.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP_WORDS.has(w));}
-export function resolveCustomAction(state,rawAction){
+export function resolveCustomAction(state,rawAction,assessment=null){
  const action=String(rawAction||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,200);
  const node=getNode(state.nodeId);if(!node||!action)return null;
  const actionWords=new Set(words(action));
@@ -61,12 +61,12 @@ export function resolveCustomAction(state,rawAction){
   if(/\b(enter|open|go|walk|descend|follow|continue)\b/.test(text)&&/enter|open|go |walk|descend|follow|continue|take the door|take the slope/.test(choice.text.toLowerCase()))score+=3;
   return {choice,score};
  }).sort((a,b)=>b.score-a.score);
- if(scored.length&&scored[0].score>=2){const result=applyChoice(state,{...scored[0].choice,text:action});result.state.history[result.state.history.length-1].action=action;result.matchedChoice=scored[0].choice.text;return result;}
+ if(scored.length&&scored[0].score>=2){const matched=scored[0].choice;const result=applyChoice(state,{...matched,text:action,...(assessment?{dc:assessment.dc,stat:assessment.stat,modifier:assessment.modifier,modifierIsTotal:true,risk:assessment.risk}: {})});result.state.history[result.state.history.length-1].action=action;result.matchedChoice=scored[0].choice.text;return result;}
  const observation=/look|listen|search|feel|study|inspect|examine|read|smell|wait|hide|think|remember/i.test(action);
  const stat=observation?'sanity':'health';
- const mod=stat==='health'?(HEALTH_MODIFIERS[state.health]??0):(SANITY_MODIFIERS[state.sanity]??0);
+ const mod=assessment?assessment.modifier:(stat==='health'?(HEALTH_MODIFIERS[state.health]??0):(SANITY_MODIFIERS[state.sanity]??0));
  const risk=/\b(run|climb|jump|force|fight|break|swim|cross)\b/i.test(action)?'high':'moderate';
- const roll={...resolveRoll(DC.Moderate,mod),dc:DC.Moderate,modifier:mod};
+ const dc=assessment?.dc||DC.Moderate;const roll={...resolveRoll(dc,mod),dc,modifier:mod};
  const next={...state,turn:(state.turn||0)+1,inventory:[...(state.inventory||[])],flags:{...(state.flags||{})},afflictions:[...(state.afflictions||[])],history:[...(state.history||[])],visited:[...(state.visited||[state.nodeId])]};
  applyRollConsequences(next,{stat,risk},roll);
  next.nodeId=next.health==='Dead'?'ending_dead':next.sanity==='Lost'?'ending_lost':state.nodeId;

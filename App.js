@@ -95,7 +95,7 @@ export default function App(){
    const assessment=assessCustomAction(text,state,{difficulty:settings.difficulty});
    if(assessment.feasibility==='impossible'){setStatus(assessment.message);return;}
    setAction('');Keyboard.dismiss();tap();const id=++op.current;setBusy(true);
-   const result=resolveCustomAction(state,text);if(!result){setBusy(false);return;}
+   const result=resolveCustomAction(state,text,assessment);if(!result){setBusy(false);return;}
    if(result.roll){
      const odds=getOddsPercent(assessment.dc,assessment.modifier);
      result.roll={...result.roll,dc:assessment.dc,modifier:assessment.modifier,odds,assessment};
