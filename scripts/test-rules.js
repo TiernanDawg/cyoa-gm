@@ -1,5 +1,5 @@
 const assert=require('assert');const fs=require('fs');const vm=require('vm');const path=require('path');
-function load(file,names){let src=fs.readFileSync(path.join(__dirname,'..',file),'utf8').replace(/^import .*;\s*/gm,'').replace(/^export /gm,'');src+='\nmodule.exports={'+names.join(',')+'};';const sandbox={module:{exports:{}},exports:{},Math,Set};vm.runInNewContext(src,sandbox,{filename:file});return sandbox.module.exports;}
+function load(file,names){let src=fs.readFileSync(path.join(__dirname,'..',file),'utf8').replace(/^import .*;\s*/gm,'').replace(/^export \{.*\};?\s*/gm,'').replace(/^export /gm,'');src+='\nmodule.exports={'+names.join(',')+'};';const sandbox={module:{exports:{}},exports:{},Math,Set};vm.runInNewContext(src,sandbox,{filename:file});return sandbox.module.exports;}
 const rules=load('src/game/rules.js',['resolveRoll','HEALTH_MODIFIERS','SANITY_MODIFIERS','DC']);
 assert.strictEqual(rules.HEALTH_MODIFIERS.Critical,-5);assert.strictEqual(rules.SANITY_MODIFIERS.Breaking,-5);
 const realism=load('src/game/realism.js',['assessCustomAction','getOddsPercent','consequenceFor','sanitizeAction']);
@@ -41,7 +41,7 @@ assert(!narratorSource.includes('openrouter.ai')&&!narratorSource.includes('api.
 const appSource=fs.readFileSync(path.join(__dirname,'..','App.js'),'utf8');
 assert(appSource.includes('GOOGLE AI STUDIO API KEY'),'app must ask for a Google key');
 assert(!appSource.includes('OPENROUTER API KEY')&&!appSource.includes('openrouter/free'),'non-Google AI must be removed from UI');
-const voice=load('src/voice/controller.js',['VOICE_STATES','VOICE_EVENTS','createVoiceState','voiceTransition','restoreVoicePosition','audioCacheKey']);
+const voice=load('src/voice/controller.js',['createVoiceState','voiceTransition','restoreVoicePosition','audioCacheKey']);
 let vs=voice.createVoiceState({provider:'premium',queue:['a','b']});vs=voice.voiceTransition(vs,'play',{passageId:'p1',queue:['a','b']});vs=voice.voiceTransition(vs,'loaded');assert.strictEqual(vs.status,'playing');
 vs=voice.voiceTransition(vs,'background');assert.strictEqual(vs.status,'playing');vs=voice.voiceTransition({...vs,provider:'system'},'background');assert.strictEqual(vs.status,'paused');vs=voice.voiceTransition(vs,'foreground');assert.strictEqual(vs.status,'playing');
 assert.deepStrictEqual(voice.restoreVoicePosition({passageId:'p',chunkIndex:2,sentenceIndex:3}),{passageId:'p',chunkIndex:2,sentenceIndex:3});assert(voice.audioCacheKey('hello','voice','style'));
