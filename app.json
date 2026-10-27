@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
-    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#090908",
       "resizeMode": "contain"
