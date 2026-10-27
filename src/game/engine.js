@@ -63,7 +63,8 @@ function applyNarratedPhysicalConsequences(next, action, beforeHealth) {
 export function resolveCustomAction(state,rawAction,assessment=null){
  const action=String(rawAction||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,200);
  const node=(state.nodeMap&&state.nodeMap[state.nodeId])||getNode(state.nodeId);if(!node||!action)return null;
- const beforeHealth=state.health;\n const actionWords=new Set(words(action));
+ const beforeHealth=state.health;
+ const actionWords=new Set(words(action));
  const scored=(node.choices||[]).map(choice=>{
   const choiceWords=words(choice.text);let score=choiceWords.reduce((sum,word)=>sum+(actionWords.has(word)?2:0),0);const text=action.toLowerCase();
   if(/\b(take|grab|pick up|collect|pocket)\b/.test(text)&&choice.effect?.item)score+=5;
@@ -81,7 +82,8 @@ export function resolveCustomAction(state,rawAction,assessment=null){
  const risk=/\b(run|climb|jump|force|fight|break|swim|cross)\b/i.test(action)?'high':'moderate';
  const dc=assessment?.dc||DC.Moderate;const roll={...resolveRoll(dc,mod),dc,modifier:mod};
  const next={...state,turn:(state.turn||0)+1,inventory:[...(state.inventory||[])],flags:{...(state.flags||{})},afflictions:[...(state.afflictions||[])],history:[...(state.history||[])],visited:[...(state.visited||[state.nodeId])]};
- applyRollConsequences(next,{stat,risk},roll);\n applyNarratedPhysicalConsequences(next,action,beforeHealth);
+ applyRollConsequences(next,{stat,risk},roll);
+ applyNarratedPhysicalConsequences(next,action,beforeHealth);
  next.nodeId=next.health==='Dead'?'ending_dead':next.sanity==='Lost'?'ending_lost':state.nodeId;
  next.history.push({action,from:state.nodeId,nodeId:next.nodeId,outcome:roll.outcome,roll:{...roll,dc:DC.Moderate,modifier:mod}});
  return {state:next,roll,nextNodeId:next.nodeId,matchedChoice:null};
