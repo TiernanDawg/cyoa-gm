@@ -58,7 +58,7 @@ jobs:
           fi
           SCHEME="CYOAGM"
           echo "Building app scheme: $SCHEME"
-          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 2 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 2 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" MARKETING_VERSION="1.0.0" build
           APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/$APP_NAME.app"
           if [ ! -d "$APP" ]; then
             echo "Xcode completed without producing the expected app bundle: $APP"
@@ -68,12 +68,12 @@ jobs:
           rm -rf Payload
           mkdir -p Payload
           cp -R "$APP" Payload/
-          /usr/bin/zip -qry DeadEnd-unsigned.ipa Payload
-          test -s DeadEnd-unsigned.ipa
+          /usr/bin/zip -qry DeadEnd.ipa Payload
+          test -s DeadEnd.ipa
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DeadEnd-unsigned-IPA
-          path: DeadEnd-unsigned.ipa
+          name: DeadEnd
+          path: DeadEnd.ipa
           if-no-files-found: error
           retention-days: 14
