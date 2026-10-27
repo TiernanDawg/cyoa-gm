@@ -9,6 +9,7 @@ export const THEMES = {
   Xbox: { bg:'#050d06',panel:'#101d12',panel2:'#1b2c1e',paper:'#d9f8d7',ink:'#061007',text:'#efffee',muted:'#8db990',accent:'#70d957',accent2:'#287d31',danger:'#ff615e',good:'#70d957',line:'#376d3b' },
   Light: { bg:'#f4f1e9',panel:'#ffffff',panel2:'#e7e1d4',paper:'#4a4338',ink:'#ffffff',text:'#211e19',muted:'#70695e',accent:'#8c5b13',accent2:'#c69a54',danger:'#bd2f2b',good:'#357448',line:'#c8bead' },
   OLED: { bg:'#000000',panel:'#080808',panel2:'#151515',paper:'#eeeeee',ink:'#000000',text:'#f7f7f7',muted:'#a1a1a1',accent:'#ffffff',accent2:'#8a8a8a',danger:'#ff3333',good:'#a3e6a3',line:'#383838' },
+  Wood: { bg:'#100b07',panel:'#21170f',panel2:'#302116',paper:'#e0c39a',ink:'#160e08',text:'#f5e6d0',muted:'#b49a79',accent:'#c58a4a',accent2:'#78502d',danger:'#d45f54',good:'#8eae80',line:'#67482c' },
   Dashboard: {
     bg: '#030907', panel: '#071610', panel2: '#0b2118', paper: '#c5f3d8',
     ink: '#04120b', text: '#e2fff0', muted: '#79a991', accent: '#59ff9a',
