@@ -2,7 +2,7 @@
   "expo": {
     "name": "DeadEnd",
     "slug": "cyoa-gm",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
