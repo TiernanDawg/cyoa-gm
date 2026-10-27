@@ -29,7 +29,7 @@ function applyRollConsequences(next,choice,roll){
 }
 export function applyChoice(state,choice){
  const next={...state,turn:(state.turn||0)+1,inventory:[...(state.inventory||[])],flags:{...(state.flags||{})},afflictions:[...(state.afflictions||[])],history:[...(state.history||[])],visited:[...(state.visited||[state.nodeId])],repeatActions:{...(state.repeatActions||{})}};
- if(choice.effect?.item&&!next.inventory.includes(choice.effect.item))next.inventory.push(choice.effect.item);
+ if(choice.effect?.item&&!next.inventory.includes(choice.effect.item)){if(next.inventory.length<3)next.inventory.push(choice.effect.item);else next.flags.inventoryFull=true;}
  if(choice.effect?.flag)next.flags[choice.effect.flag]=true;
  if(choice.effect?.recover==='health')next.health=improveHealth(next.health);
  if(choice.effect?.recover==='sanity')next.sanity=improveSanity(next.sanity);

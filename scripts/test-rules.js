@@ -4,6 +4,8 @@ const rules=load('src/game/rules.js',['resolveRoll','HEALTH_MODIFIERS','SANITY_M
 assert.strictEqual(rules.HEALTH_MODIFIERS.Critical,-5);assert.strictEqual(rules.SANITY_MODIFIERS.Breaking,-5);
 const realism=load('src/game/realism.js',['assessCustomAction','getOddsPercent','consequenceFor','sanitizeAction']);
 assert.strictEqual(realism.sanitizeAction('  look\u0000 around  '),'look around');
+assert.strictEqual(realism.assessCustomAction("I'm scared and don't know what to do",{health:'Full'}).feasibility,'impossible','non-action statements should be rejected without consuming a turn');
+assert.strictEqual(realism.assessCustomAction('I inspect the locked door',{health:'Full'}).feasibility,'plausible','clear attempted actions should be accepted');
 assert.strictEqual(realism.assessCustomAction('teleport to the exit',{health:'Full'}).feasibility,'impossible');
 assert.strictEqual(realism.assessCustomAction('unlock the door',{inventory:[]}).feasibility,'impossible');
 assert.strictEqual(realism.assessCustomAction('carefully listen',{sanity:'Steady'}).stat,'sanity');
@@ -15,6 +17,9 @@ assert.notStrictEqual(selfHit.state.health,'Full','explicit self-injury must red
 assert.strictEqual(selfHit.state.flags.selfInjury,true,'self-injury should be recorded in state');
 const shoulderHit=engine.resolveCustomAction({...engine.createInitialState(),nodeMap:{start:{choices:[]}}},'I swing the iron pipe into my own left shoulder',{dc:10,stat:'health',modifier:0,risk:'moderate'});
 assert.notStrictEqual(shoulderHit.state.health,'Full','left/right body-part self-injury must reduce health');
+const capped=engine.resolveCustomAction({...engine.createInitialState(),inventory:['flashlight','key','map'],nodeMap:{start:{choices:[{text:'Take the lantern',next:'start',effect:{item:'lantern'}}]}}},'take the lantern',{dc:10,stat:'health',modifier:0,risk:'low'});
+assert.strictEqual(capped.state.inventory.length,3,'inventory must enforce the three-item carry limit');
+assert.strictEqual(capped.state.flags.inventoryFull,true,'full inventory must record that an item could not be carried');
 const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices','buildTaleMap']);
 assert.strictEqual(tales.TALE_STYLES.length,6);assert.strictEqual(tales.pickTale('Cosmic Horror','abc').style,'Cosmic Horror');
 assert.notStrictEqual(tales.pickTale('Dark Folktale','seed1').opening,tales.pickTale('Dark Folktale','seed2').opening);

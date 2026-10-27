@@ -11,6 +11,7 @@ function norm(v){return String(v||'').toLowerCase();}
 function hasItem(inventory,names){return (inventory||[]).some(item=>names.some(name=>norm(typeof item==='string'?item:item?.id||item?.name).includes(name)));}
 export function assessCustomAction(raw,state={},options={}){
  const action=String(raw||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,200);
+ if(action.split(/\s+/).filter(Boolean).length<2 || !/\b(?:I |try |attempt |use |take |grab |pick |look |listen |search |inspect |examine |read |smell |notice |remember |think |study |observe |ask |persuade |convince |threaten |talk |lie |calm |question |hide |sneak |repair |make |build |craft |combine |tie |fix |run |climb |jump |force |push |pull |lift |break |fight |hit |kick |carry |swim |crawl |squeeze |escape |open |close |enter |leave |move |walk |wait |retreat |back away |call |shout |throw |swing |strike |block |dodge |bandage |heal |drink |eat |equip |drop|)\b/i.test(action)) return {feasibility:'impossible',message:'That does not describe a clear action yet. Start with a verb, such as “I inspect the lock” or “I listen at the door.”',turnCost:0};
  if(!action)return {feasibility:'impossible',message:'Describe one action you can actually attempt.',turnCost:0};
  if(IMPOSSIBLE.some(re=>re.test(action)))return {feasibility:'impossible',message:'Your body cannot do that, and declaring it cannot change the world. Try an observable action.',turnCost:0};
  const missing=ITEM_NEEDS.find(rule=>rule.pattern.test(action)&&!hasItem(state.inventory,rule.items));

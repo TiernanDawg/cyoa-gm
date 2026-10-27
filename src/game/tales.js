@@ -56,11 +56,11 @@ export function buildTaleMap(tale) {
     const nextB = i===11 ? 'tale_ending_truth' : 'tale_'+Math.min(11,i+2);
     const nextC = i===11 ? 'tale_ending_sacrifice' : 'tale_'+Math.min(11,i+3);
     map['tale_'+i] = {
-      scene: title+'. '+beat+'. '+detail+' You are inside '+setting+'. '+(i%3===0?'Nearby, '+threat+'. ':i%3===1?'A clue points toward the explanation: '+truth+'. ':'Your earlier decisions have changed what feels safe. ')+'Look for details that can be tested; the place rewards neither panic nor blind confidence.',
+      scene: title+'. '+beat+'. '+detail+' You are inside '+setting+'. '+(i%3===0?'Nearby, '+threat+'. ':i%3===1?'A clue points toward the explanation: '+truth+'. ':'Your earlier decisions have changed what feels safe. ')+'The next move must address what is actually here. '+(i%4===0?'You can see a reachable exit marker and fresh evidence. ':i%4===1?'A loose panel and a damaged light are within reach. ':i%4===2?'The route narrows beside a clear source of sound. ':'A dropped object lies near the only visible doorway. '),
       choices: [
-        {text:i===11?'Take the exposed route toward the exit.':'Investigate the evidence before moving on.',next:nextA,dc:10+i%4,stat:'sanity',effect:i===4?{item:'emergency supplies'}:undefined},
-        {text:i===11?'Follow the clues and accept the truth.':'Take the more dangerous route and keep moving.',next:nextB,dc:13+i%5,stat:i%2?'health':'sanity',risk:'moderate',effect:i===7?{item:'marked map'}:undefined},
-        {text:i===11?'Make one final desperate attempt.':'Spend a resource to create a safer opening.',next:nextC,dc:16+i%4,stat:'health',risk:'high',effect:i===4?{item:'flare'}:undefined}
+        {text:i===11?'Reach the exit route described by the evidence.':i%4===0?'Inspect the fresh evidence before committing to a route.':i%4===1?'Check the loose panel and the damaged light.':i%4===2?'Trace the sound without leaving cover.':'Examine the dropped object and nearby doorway.',next:nextA,dc:10+i%4,stat:'sanity',risk:'low'},
+        {text:i===11?'Follow the clues and confront the truth.':i%3===0?'Move toward the threat while keeping an escape route.':i%3===1?'Take the narrow route and watch your footing.':'Test the doorway and keep the evidence in sight.',next:nextB,dc:13+i%5,stat:i%2?'health':'sanity',risk:'moderate'},
+        {text:i===11?'Make a final, costly attempt to change the outcome.':i%3===0?'Use a carried item to create a safer opening.':i%3===1?'Force a way past the obstruction.':'Risk a quick move before the sound gets closer.',next:nextC,dc:16+i%4,stat:'health',risk:'high'}
       ]
     };
   }
