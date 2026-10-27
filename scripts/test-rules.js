@@ -57,6 +57,8 @@ const appSource=fs.readFileSync(path.join(__dirname,'..','App.js'),'utf8');
 assert(appSource.includes('GOOGLE AI STUDIO API KEY'),'app must ask for a Google key');
 assert(appSource.includes('buildTaleMap')&&appSource.includes("fresh.nodeId='tale_0'"),'new runs must start on the generated tale map');
 assert(appSource.includes('Object.keys(THEMES)'),'all available themes must be selectable');
+assert(appSource.includes('sanityWarp=useRef')&&appSource.includes('damageFlash=useRef'),'sanity and damage animations must have initialized animated values');
+assert(appSource.includes('CARRIED ITEMS')&&appSource.includes('DROP'),'inventory must be inspectable and allow dropping carried items');
 const themeSource=fs.readFileSync(path.join(__dirname,'..','src/ui/theme.js'),'utf8');
 for(const name of ['Wood','Dashboard','PlayStation','Nintendo','Xbox','Light','OLED'])assert(new RegExp('\\b'+name+':').test(themeSource),'missing selectable theme '+name);
 assert(!appSource.includes('OPENROUTER API KEY')&&!appSource.includes('openrouter/free'),'non-Google AI must be removed from UI');
