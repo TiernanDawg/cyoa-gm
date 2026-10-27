@@ -79,7 +79,7 @@ export default function App(){
    if(updated.health==='Dead'||updated.sanity==='Lost'||(String(updated.nodeId||'').startsWith('tale_ending_')&&!(getCurrentNode(updated)?.choices||[]).length)){const end=getCurrentNode(updated)?.scene||'The record ends here.';setScene(end);setBusy(false);setScreen('ending');speak(end);return;}
    if(settings.aiEnabled&&settings.apiKey.trim()){
      try{
-       if(customAction){const res=await narrateFreeform(sourceScene,actionText,outcome,settings.apiKey,settings.model,{...updated,nodeId:nextId},settings.provider,settings.endpoint,{storyStyle:style,customPremise:premise});if(runId!==op.current)return;setScene(res.text);if(res.nextNodeId&&getCurrentNode({...updated,nodeId:res.nextNodeId})){updated.nodeId=res.nextNodeId;setState({...updated});}}
+       if(customAction){const res=await narrateFreeform(sourceScene,actionText,outcome,settings.apiKey,settings.model,{...updated,nodeId:nextId},settings.provider,settings.endpoint,{storyStyle:style,customPremise:premise,storyBible:updated.storyBible||{},rollingSummary:updated.rollingSummary||'',recentOpenings:(updated.history||[]).slice(-4).map(h=>h.action||'')});if(runId!==op.current)return;setScene(res.text);if(res.nextNodeId&&getCurrentNode({...updated,nodeId:res.nextNodeId})){updated.nodeId=res.nextNodeId;setState({...updated});}}
        else {const text=await narrate(base,actionText,outcome,settings.apiKey,settings.model,settings.provider,settings.endpoint,{...updated,storyStyle:style,customPremise:premise});if(runId!==op.current)return;setScene(text);}
      }catch{setScene(base+'\n\nThe moment settles. The built-in story remains ready.');}
    }else setScene(customAction&&!getCurrentNode(updated)?.scene?base+'\n\n'+offlineConsequence(outcome):base);
