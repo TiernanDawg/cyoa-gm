@@ -63,7 +63,8 @@ export default function App(){
    const runId=++op.current;Keyboard.dismiss();const fresh=createInitialState();const selected=settings.storyStyle==='Randomize'?randomStyle():settings.storyStyle;
    setState(fresh);setStyle(selected);setPremise(settings.premise||premise);setRoll(null);setScreen('loading');setBusy(true);
    const seed=settings.seed||String(Math.floor(Math.random()*999999)+1);
-   const tale=pickTale(selected,seed,settings.premise||premise);\n   let opening=tale.opening||OPENINGS[selected]||OPENINGS['Dark Folktale'];
+   const tale=pickTale(selected,seed,settings.premise||premise);
+   let opening=tale.opening||OPENINGS[selected]||OPENINGS['Dark Folktale'];
    if(settings.aiEnabled&&settings.apiKey.trim()){try{opening=await generateOpening(opening,settings.apiKey,settings.model,settings.provider,settings.endpoint,selected,(settings.premise||premise)+' Seed: '+seed+'. Setting: '+(settings.setting||'unknown')).catch(()=>opening);}catch{}}
    if(runId!==op.current)return;
    setScene(opening);saveRun('autosave',{state:fresh,scene:opening,style:selected,premise:settings.premise||premise,turn:0,settings:{...settings,apiKey:''}}).then(refreshSaves).catch(()=>{});setBusy(false);setProfile(p=>{const next={...p,runs:(p.runs||0)+1,lastSeed:seed};writeProfile(next).catch(()=>{});return next;});setScreen('game');
