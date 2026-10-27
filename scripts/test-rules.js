@@ -12,7 +12,8 @@ assert.strictEqual(realism.consequenceFor('critical_failure','health').damage,2)
 const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices']);
 assert.strictEqual(tales.TALE_STYLES.length,6);assert.strictEqual(tales.pickTale('Cosmic Horror','abc').style,'Cosmic Horror');
 assert.notStrictEqual(tales.pickTale('Dark Folktale','seed1').opening,tales.pickTale('Dark Folktale','seed2').opening);
-assert.strictEqual(tales.storyChoices(tales.pickTale('Gothic Mystery','1'),'x',1).length,3);\nfor(const style of tales.TALE_STYLES){const map=tales.buildTaleMap(tales.pickTale(style,'test-seed'));assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_')&&!k.startsWith('tale_ending_')).length,12);assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_ending_')).length,3);for(const [id,node] of Object.entries(map)){assert(node.scene.length>40,id+' needs scene text');for(const choice of node.choices)assert(map[choice.next],id+' has invalid route '+choice.next);}}
+assert.strictEqual(tales.storyChoices(tales.pickTale('Gothic Mystery','1'),'x',1).length,3);
+for(const style of tales.TALE_STYLES){const map=tales.buildTaleMap(tales.pickTale(style,'test-seed'));assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_')&&!k.startsWith('tale_ending_')).length,12);assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_ending_')).length,3);for(const [id,node] of Object.entries(map)){assert(node.scene.length>40,id+' needs scene text');for(const choice of node.choices)assert(map[choice.next],id+' has invalid route '+choice.next);}}
 const achievements=load('src/game/achievements.js',['ACHIEVEMENTS','awardAchievements']);
 assert(achievements.ACHIEVEMENTS.length>=25);assert(achievements.awardAchievements({}, {turns:1}).achievements.includes('first_steps'));
 
