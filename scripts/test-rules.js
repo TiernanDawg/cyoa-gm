@@ -9,7 +9,7 @@ assert.strictEqual(realism.assessCustomAction('unlock the door',{inventory:[]}).
 assert.strictEqual(realism.assessCustomAction('carefully listen',{sanity:'Steady'}).stat,'sanity');
 assert.strictEqual(realism.getOddsPercent(10,0),55);
 assert.strictEqual(realism.consequenceFor('critical_failure','health').damage,2);
-const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices']);
+const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices','buildTaleMap']);
 assert.strictEqual(tales.TALE_STYLES.length,6);assert.strictEqual(tales.pickTale('Cosmic Horror','abc').style,'Cosmic Horror');
 assert.notStrictEqual(tales.pickTale('Dark Folktale','seed1').opening,tales.pickTale('Dark Folktale','seed2').opening);
 assert.strictEqual(tales.storyChoices(tales.pickTale('Gothic Mystery','1'),'x',1).length,3);
