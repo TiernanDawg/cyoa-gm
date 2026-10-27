@@ -4,12 +4,15 @@ import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import Svg, { Circle, Defs, LinearGradient, Polygon, Stop, Text as SvgText } from 'react-native-svg';
 import { createInitialState, getCurrentNode, applyChoice, resolveCustomAction } from './src/game/engine';
+import { assessCustomAction, getOddsPercent, sanitizeAction } from './src/game/realism';
+import { pickTale, TALE_STYLES } from './src/game/tales';
+import { awardAchievements } from './src/game/achievements';
 import { narrate, narrateFreeform, generateOpening, testConnection } from './src/llm/narrator';
 import { THEMES, MOTION } from './src/ui/theme';
 import { readSettings, writeSettings, readProfile, writeProfile, listSaves, saveRun, loadRun, clearAll } from './src/persistence/storage';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 
-const STYLES = ['Dark Folktale','Psychological Dread','Cosmic Horror','Gothic Mystery','Occult Conspiracy','Survival Realism'];
+const STYLES = TALE_STYLES;
 const OPENINGS = {
  'Dark Folktale':'The air tastes of wet stone and old candle smoke. A warped door stands ajar to your left; worn steps descend to your right. Tally marks cover the wall, and some are fresh. Behind you, your footprints are already fading.',
  'Psychological Dread':'You know this corridor. You are certain you have never seen it before. A damp footprint appears ahead, facing you. When you turn, the passage behind you is longer than it was a moment ago.',
@@ -39,7 +42,7 @@ function Dice({roll,theme,onDone}) {
  useEffect(()=>{if(roll){spin.setValue(0);Animated.sequence([Animated.timing(spin,{toValue:1,duration:850,useNativeDriver:true}),Animated.spring(spin,{toValue:0.94,useNativeDriver:true,speed:15,bounciness:12})]).start(()=>onDone?.());}},[roll]);
  if(!roll)return null;
  const rotate=spin.interpolate({inputRange:[0,1],outputRange:['-18deg','378deg']});
- return <View style={[s.dicePanel,{backgroundColor:theme.panel,borderColor:theme.line}]}><Text style={[s.eyebrow,{color:theme.accent}]}>CHECK RESOLVED</Text><Animated.View style={{transform:[{rotate},{scale:spin.interpolate({inputRange:[0,.5,1],outputRange:[.65,1.18,1]})],marginVertical:14}}><Svg width="108" height="108" viewBox="0 0 100 100"><Polygon points="50,5 92,32 78,82 22,82 8,32" fill={theme.panel2} stroke={theme.accent} strokeWidth="2.5"/><Polygon points="50,5 50,49 8,32" fill={theme.accent2} opacity=".9"/><Polygon points="50,5 92,32 50,49" fill={theme.accent} opacity=".65"/><Polygon points="8,32 50,49 22,82" fill={theme.accent} opacity=".35"/><Polygon points="92,32 50,49 78,82" fill={theme.accent2} opacity=".65"/><SvgText x="50" y="58" fontSize="25" fontWeight="900" fill={theme.text} textAnchor="middle">{roll.raw}</SvgText></Svg></Animated.View><Text style={[s.title,{color:theme.text}]}>{fmt(roll.outcome)}</Text><Text style={{color:theme.muted,textAlign:'center'}}>D20 {roll.raw} {roll.modifier>=0?'+':''}{roll.modifier} = {roll.total}  ·  Target {roll.dc}</Text><Button theme={theme} secondary onPress={onDone}>CONTINUE</Button></View>;
+ return <View style={[s.dicePanel,{backgroundColor:theme.panel,borderColor:theme.line}]}><Text style={[s.eyebrow,{color:theme.accent}]}>CHECK RESOLVED</Text><Animated.View style={{transform:[{rotate},{scale:spin.interpolate({inputRange:[0,.5,1],outputRange:[.65,1.18,1]})}],marginVertical:14}}><Svg width="108" height="108" viewBox="0 0 100 100"><Polygon points="50,5 92,32 78,82 22,82 8,32" fill={theme.panel2} stroke={theme.accent} strokeWidth="2.5"/><Polygon points="50,5 50,49 8,32" fill={theme.accent2} opacity=".9"/><Polygon points="50,5 92,32 50,49" fill={theme.accent} opacity=".65"/><Polygon points="8,32 50,49 22,82" fill={theme.accent} opacity=".35"/><Polygon points="92,32 50,49 78,82" fill={theme.accent2} opacity=".65"/><SvgText x="50" y="58" fontSize="25" fontWeight="900" fill={theme.text} textAnchor="middle">{roll.raw}</SvgText></Svg></Animated.View><Text style={[s.title,{color:theme.text}]}>{fmt(roll.outcome)}</Text><Text style={{color:theme.muted,textAlign:'center'}}>D20 {roll.raw} {roll.modifier>=0?'+':''}{roll.modifier} = {roll.total}  ·  Target {roll.dc}</Text><Button theme={theme} secondary onPress={onDone}>CONTINUE</Button></View>;
 }
 export default function App(){
  const [settings,setSettings]=useState(DEFAULT),[profile,setProfile]=useState({runs:0,deaths:0,endings:[],achievements:[],bestRoll:null,worstRoll:null,score:0});
@@ -60,7 +63,7 @@ export default function App(){
    const runId=++op.current;Keyboard.dismiss();const fresh=createInitialState();const selected=settings.storyStyle==='Randomize'?randomStyle():settings.storyStyle;
    setState(fresh);setStyle(selected);setPremise(settings.premise||premise);setRoll(null);setScreen('loading');setBusy(true);
    const seed=settings.seed||String(Math.floor(Math.random()*999999)+1);
-   let opening=OPENINGS[selected]||OPENINGS['Dark Folktale'];
+   const tale=pickTale(selected,seed,settings.premise||premise);\n   let opening=tale.opening||OPENINGS[selected]||OPENINGS['Dark Folktale'];
    if(settings.aiEnabled&&settings.apiKey.trim()){try{opening=await generateOpening(opening,settings.apiKey,settings.model,settings.provider,settings.endpoint,selected,(settings.premise||premise)+' Seed: '+seed+'. Setting: '+(settings.setting||'unknown')).catch(()=>opening);}catch{}}
    if(runId!==op.current)return;
    setScene(opening);saveRun('autosave',{state:fresh,scene:opening,style:selected,premise:settings.premise||premise,turn:0,settings:{...settings,apiKey:''}}).then(refreshSaves).catch(()=>{});setBusy(false);setProfile(p=>{const next={...p,runs:(p.runs||0)+1,lastSeed:seed};writeProfile(next).catch(()=>{});return next;});setScreen('game');
@@ -87,9 +90,17 @@ export default function App(){
  const [pending,setPending]=useState(null);
  const finishRoll=async()=>{setShowRoll(false);if(!pending)return;const p=pending;setPending(null);await updateScene(p.result.state,p.result.nextNodeId,p.choice.text,p.outcome,p.id);};
  const customAct=async()=>{
-   const text=action.trim().slice(0,200).replace(/[\u0000-\u001f\u007f]/g,'');if(!text||busy)return;
-   setAction('');Keyboard.dismiss();tap();const id=++op.current;setBusy(true);const result=resolveCustomAction(state,text);if(!result){setBusy(false);return;}
-   const r=result.roll?{...result.roll,dc:result.roll.dc||13}:null;setRoll(r);const outcome=r?'D20 '+r.raw+' + '+r.modifier+' = '+r.total+' against target '+r.dc+': '+r.outcome+'.':'No roll was required.';
+   const text=sanitizeAction(action);if(!text||busy)return;
+   const assessment=assessCustomAction(text,state,{difficulty:settings.difficulty});
+   if(assessment.feasibility==='impossible'){setStatus(assessment.message);return;}
+   setAction('');Keyboard.dismiss();tap();const id=++op.current;setBusy(true);
+   const result=resolveCustomAction(state,text);if(!result){setBusy(false);return;}
+   if(result.roll){
+     const odds=getOddsPercent(assessment.dc,assessment.modifier);
+     result.roll={...result.roll,dc:assessment.dc,modifier:assessment.modifier,odds,assessment};
+   }
+   const r=result.roll?{...result.roll,dc:result.roll.dc||assessment.dc,modifier:result.roll.modifier??assessment.modifier}:null;setRoll(r);
+   const outcome=r?'Attempt: '+text+'. Tested with '+assessment.stat+' ('+(assessment.stat==='health'?state.health:state.sanity)+'). Difficulty '+assessment.tier+'. Estimated success '+getOddsPercent(assessment.dc,assessment.modifier)+'%. D20 '+r.raw+' + '+r.modifier+' = '+r.total+' against target '+r.dc+': '+r.outcome+'.':'No roll was required.';
    if(r){setBusy(false);setPending({result,choice:{text},outcome,id,custom:true,source:scene});setShowRoll(true);}
    else await updateScene(result.state,result.nextNodeId,text,outcome,id,true,scene);
  };
