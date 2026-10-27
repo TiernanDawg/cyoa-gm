@@ -33,11 +33,11 @@ jobs:
         run: |
           # Use the top-level CocoaPods-integrated workspace, not the
           # project.xcworkspace nested inside the .xcodeproj.
-          # CocoaPods creates ios/CYOAGM.xcworkspace. Never select the
-          # nested ios/CYOAGM.xcodeproj/project.xcworkspace: it omits the
+          # CocoaPods creates ios/DeadEnd.xcworkspace. Never select the
+          # nested ios/DeadEnd.xcodeproj/project.xcworkspace: it omits the
           # Pods workspace integration and causes Expo module maps to be absent.
-          PROJECT="ios/CYOAGM.xcodeproj"
-          WORKSPACE="ios/CYOAGM.xcworkspace"
+          PROJECT="ios/DeadEnd.xcodeproj"
+          WORKSPACE="ios/DeadEnd.xcworkspace"
           if [ ! -d "$WORKSPACE" ] || [ ! -d "$PROJECT" ]; then
             echo "Expected CocoaPods workspace/project was not generated."
             find ios -maxdepth 4 \( -name '*.xcworkspace' -o -name '*.xcodeproj' \) -print
@@ -47,7 +47,7 @@ jobs:
             echo "CocoaPods project was not generated at ios/Pods/Pods.xcodeproj"
             exit 1
           fi
-          APP_NAME="CYOAGM"
+          APP_NAME="DeadEnd"
           echo "Using CocoaPods workspace: $WORKSPACE"
           echo "Expected app scheme/target: $APP_NAME"
           SCHEME_LIST=$(xcodebuild -list -workspace "$WORKSPACE" 2>&1)
@@ -56,7 +56,7 @@ jobs:
             printf '%s\n' "$SCHEME_LIST"
             exit 1
           fi
-          SCHEME="CYOAGM"
+          SCHEME="DeadEnd"
           echo "Building app scheme: $SCHEME"
           xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 2 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" MARKETING_VERSION="1.0.0" build
           APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/$APP_NAME.app"
