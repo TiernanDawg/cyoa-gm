@@ -69,11 +69,11 @@ jobs:
           mkdir -p Payload
           cp -R "$APP" Payload/
           /usr/bin/zip -qry DeadEnd-unsigned.ipa Payload
-          test -s CYOA-GM-unsigned.ipa
+          test -s DeadEnd-unsigned.ipa
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: DeadEnd-unsigned-IPA
-          path: CYOA-GM-unsigned.ipa
+          path: DeadEnd-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
