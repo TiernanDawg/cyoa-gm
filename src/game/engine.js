@@ -48,8 +48,8 @@ export function applyChoice(state,choice){
 const STOP_WORDS=new Set(['the','a','an','to','and','or','i','me','my','it','on','in','at','with','for','of','do','try','want','would','like','please','then','now','just']);
 function words(text){return text.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP_WORDS.has(w));}
 function explicitSelfInjury(action) {
- return /\b(?:hit|strike|punch|kick|smash|slam|stab|cut|burn|shoot|hurt|injure|attack)\b.{0,70}\b(?:myself|my own (?:left |right )?(?:head|face|body|arm|leg|shoulder)|self)\b/i.test(action)
-  || /\b(?:myself|my own (?:left |right )?(?:head|face|body|arm|leg|shoulder))\b.{0,70}\b(?:hit|strike|punch|kick|smash|slam|stab|cut|burn|shoot|hurt|injure|attack)\b/i.test(action)
+ return /\b(?:hit|strike|punch|kick|smash|slam|stab|cut|burn|shoot|hurt|injure|attack|swing|throw|drive)\b.{0,70}\b(?:myself|my own (?:left |right )?(?:head|face|body|arm|leg|shoulder)|self)\b/i.test(action)
+  || /\b(?:myself|my own (?:left |right )?(?:head|face|body|arm|leg|shoulder))\b.{0,70}\b(?:hit|strike|punch|kick|smash|slam|stab|cut|burn|shoot|hurt|injure|attack|swing|throw|drive)\b/i.test(action)
   || /\b(?:swing|throw|drive)\b.{0,80}\b(?:into|at)\b.{0,30}\bmyself\b/i.test(action);
 }
 function healthRank(value) { return ({Full:0,Hurt:1,Critical:2,Dead:3})[value] ?? 0; }
