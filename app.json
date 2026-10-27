@@ -13,6 +13,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tiernan.cyoagm"
-    }
+    },
+    "icon": "./assets/icon.png"
   }
 }
