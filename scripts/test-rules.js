@@ -16,6 +16,15 @@ assert.strictEqual(tales.storyChoices(tales.pickTale('Gothic Mystery','1'),'x',1
 const achievements=load('src/game/achievements.js',['ACHIEVEMENTS','awardAchievements']);
 assert(achievements.ACHIEVEMENTS.length>=25);assert(achievements.awardAchievements({}, {turns:1}).achievements.includes('first_steps'));
 
+const map=load('src/game/map.js',['MAP','getNode']);
+const terminal=Object.entries(map.MAP).filter(([id,node])=>id.startsWith('ending_')&&node.choices.length===0);
+assert(terminal.length>=4,'provide at least four terminal endings');
+for(const [id,node] of Object.entries(map.MAP)){
+ assert(node.scene&&node.scene.length>40,'every node needs meaningful scene text: '+id);
+ assert(Array.isArray(node.choices),'every node needs a choices array: '+id);
+ for(const choice of node.choices){assert(map.MAP[choice.next],'choice target must exist: '+id+' -> '+choice.next);assert(choice.text&&choice.text.length>5,'choice needs readable action text: '+id);}
+}
+assert(map.getNode('not_a_real_node')===null,'unknown map nodes must fail closed');
 const deterministic=Math.random;
 let rolls=0, outcomes=new Set();
 Math.random=()=>{rolls++;return ((rolls*7919)%1000)/1000;};
