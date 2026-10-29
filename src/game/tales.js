@@ -50,7 +50,9 @@ const ENDING_BEATS = {
   truth: {title:'The Truth Beneath',scene:'The final evidence fits together. You understand what happened and why the place kept you alive long enough to discover it. Understanding is not the same as safety.'},
   sacrifice: {title:'The Price',scene:'You stop the immediate danger at a cost that cannot be reversed. The silence afterward feels earned, but it does not feel like victory.'}
 };
-export function buildTaleMap(tale, options = {}) {\n  const requestedLength = options.length || tale.length || 'Standard';\n  const beatCount = requestedLength === 'Short' ? 6 : (requestedLength === 'Long' || requestedLength === 'Endless') ? LOCATION_BEATS.length : Math.min(12, LOCATION_BEATS.length);
+export function buildTaleMap(tale, options = {}) {
+  const requestedLength = options.length || tale.length || 'Standard';
+  const beatCount = requestedLength === 'Short' ? 6 : (requestedLength === 'Long' || requestedLength === 'Endless') ? LOCATION_BEATS.length : Math.min(12, LOCATION_BEATS.length);
   const map = {};
   const title = tale.subtitle || tale.style;
   const setting = tale.setting || 'the sealed place';

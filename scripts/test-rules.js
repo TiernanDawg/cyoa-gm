@@ -26,6 +26,7 @@ assert.strictEqual(unrelated.nextNodeId,'start','unmatched freeform actions must
 const tales=load('src/game/tales.js',['TALE_STYLES','pickTale','storyChoices','buildTaleMap']);
 assert.strictEqual(tales.TALE_STYLES.length,6);assert.strictEqual(tales.pickTale('Cosmic Horror','abc').style,'Cosmic Horror');
 assert(tales.buildTaleMap({...tales.pickTale('Gothic Mystery','intro-seed'),opening:'UNIQUE OPENING CHECK'}).tale_0.scene.includes('UNIQUE OPENING CHECK'),'first story node must contain the actual selected opening');
+const shortMap=tales.buildTaleMap(tales.pickTale('Dark Folktale','short'),{length:'Short'});assert.strictEqual(Object.keys(shortMap).filter(k=>/^tale_\\d+$/.test(k)).length,6,'Short run should have six beats');const longMap=tales.buildTaleMap(tales.pickTale('Dark Folktale','long'),{length:'Long'});assert.strictEqual(Object.keys(longMap).filter(k=>/^tale_\\d+$/.test(k)).length,18,'Long run should have eighteen beats');
 assert.notStrictEqual(tales.pickTale('Dark Folktale','seed1').opening,tales.pickTale('Dark Folktale','seed2').opening);
 assert.strictEqual(tales.storyChoices(tales.pickTale('Gothic Mystery','1'),'x',1).length,3);
 for(const style of tales.TALE_STYLES){const map=tales.buildTaleMap(tales.pickTale(style,'test-seed'));assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_')&&!k.startsWith('tale_ending_')).length,12);assert.strictEqual(Object.keys(map).filter(k=>k.startsWith('tale_ending_')).length,3);for(const [id,node] of Object.entries(map)){assert(node.scene.length>40,id+' needs scene text');for(const choice of node.choices)assert(map[choice.next],id+' has invalid route '+choice.next);}}
@@ -62,10 +63,12 @@ assert(appSource.includes("page==='Hub'")&&appSource.includes('tileGrid')&&appSo
 assert(fs.readFileSync(path.join(__dirname,'..','src/persistence/storage.js'),'utf8').includes('expo-secure-store'),'API key must be stored securely');
 assert(appSource.includes('buildTaleMap')&&appSource.includes("fresh.nodeId='tale_0'"),'new runs must start on the generated tale map');
 assert(appSource.includes('Object.keys(THEMES)'),'all available themes must be selectable');
+assert(appSource.includes('aiStoryMode')&&appSource.includes('!!p.custom,p.source||scene'),'custom actions including dice-roll actions must enable adaptive story mode');assert(appSource.includes("page==='Story & AI'")&&appSource.includes("page==='Sound & Voice'")&&appSource.includes("page==='Look & Feel'"),'settings must be grouped into clear beginner-friendly categories');assert(appSource.includes('THEME_REWARDS')&&appSource.includes('themePickerOpen'),'reward themes must use a visual theme picker');assert(narratorSource.includes('choices must contain 3 distinct playable next actions'),'AI-directed story responses must return contextual choices');
 assert(appSource.includes('sanityWarp=useRef')&&appSource.includes('damageFlash=useRef'),'sanity and damage animations must have initialized animated values');
 assert(appSource.includes('CARRIED ITEMS')&&appSource.includes('DROP'),'inventory must be inspectable and allow dropping carried items');
 const themeSource=fs.readFileSync(path.join(__dirname,'..','src/ui/theme.js'),'utf8');
 for(const name of ['Wood','Dashboard','PlayStation','Nintendo','Xbox','Light','OLED'])assert(new RegExp('\\b'+name+':').test(themeSource),'missing selectable theme '+name);
+for(const name of ['Dracula','Nord','Catppuccin','Ocean','Cyberpunk','ForestNoir','PipBoy','Moonlit','Synthwave','BloodMoon','Void'])assert(new RegExp('\\b'+name+':').test(themeSource),'missing additional theme '+name);assert(themeSource.includes('THEME_REWARDS'),'difficulty theme reward mapping must exist');
 assert(!appSource.includes('OPENROUTER API KEY')&&!appSource.includes('openrouter/free'),'obsolete OpenRouter settings must remain removed');
 assert(appSource.includes("['groq','google']")&&appSource.includes('Alert.alert(label'),'long option lists must use compact dropdown selectors');
 assert(fs.readFileSync(path.join(__dirname,'..','src/persistence/storage.js'),'utf8').includes('groq-api-key'),'Groq key must be stored separately in secure storage');
