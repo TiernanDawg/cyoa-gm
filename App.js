@@ -78,7 +78,7 @@ export default function App(){
    const seed=settings.seed||String(Math.floor(Math.random()*999999)+1);
    const tale=pickTale(selected,seed,chosenSetting);
    let opening=tale.opening||OPENINGS[selected]||OPENINGS['Dark Folktale'];
-   if(settings.aiEnabled&&settings.apiKey.trim()){try{opening=await generateOpening(opening,settings.apiKey,settings.model,settings.provider,settings.endpoint,selected,(settings.premise||premise)+' Seed: '+seed+'. Setting: '+(settings.setting||'unknown')).catch(()=>opening);}catch{}}
+   // Start with the built-in opening immediately; optional AI narration is used for actions, not a blocking startup request.
    if(runId!==op.current)return;
    fresh.nodeMap=buildTaleMap({...tale,opening});fresh.nodeId='tale_0';fresh.visited=['tale_0'];fresh.storyBible=tale.storyBible;fresh.rollingSummary=opening;const firstScene=fresh.nodeMap.tale_0.scene;setState(fresh);
    setScene(firstScene);saveRun('autosave',{state:fresh,scene:firstScene,style:selected,premise:settings.premise||premise,turn:0,settings:{...settings,apiKey:''}}).then(refreshSaves).catch(()=>{});setBusy(false);setProfile(p=>{const premiseHistory=[...(p.premiseHistory||[]),...(chosenPremise?[{id:chosenPremise.id,setting:chosenPremise.setting,threatType:chosenPremise.threatType}]:[])].slice(-10);const next={...p,runs:(p.runs||0)+1,lastSeed:seed,premiseHistory};writeProfile(next).catch(()=>{});return next;});setScreen('game');
