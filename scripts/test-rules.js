@@ -50,11 +50,15 @@ assert.strictEqual(rolls,1000);
 assert(outcomes.has('critical_failure')&&outcomes.has('critical_success'),'simulation must exercise critical outcomes');
 
 const narratorSource=fs.readFileSync(path.join(__dirname,'..','src/llm/narrator.js'),'utf8');
-assert(narratorSource.includes("DEFAULT_FREE_MODEL='gemini-3.8-flash'"),'Google Gemini free-tier model must be default');
-assert(narratorSource.includes('ALLOWED_GEMINI_MODELS'),'Gemini model allowlist must be enforced');
+assert(narratorSource.includes("DEFAULT_FREE_MODEL='auto'"),'Google Gemini model must default to automatic selection');
+assert(narratorSource.includes('listAvailableModels')&&narratorSource.includes('supportedGenerationMethods'),'Gemini models must be discovered from the API key');
+assert(narratorSource.includes('resolveModel'),'API calls must resolve an available model automatically');
 assert(!narratorSource.includes('openrouter.ai')&&!narratorSource.includes('api.openai.com'),'only Google endpoints may exist');
 const appSource=fs.readFileSync(path.join(__dirname,'..','App.js'),'utf8');
-assert(appSource.includes('GOOGLE AI STUDIO API KEY'),'app must ask for a Google key');
+assert(appSource.includes('Google AI Studio API key'),'app must ask for a Google key');
+assert(appSource.includes('TEST CONNECTION')&&appSource.includes('Paste API key'),'AI settings must expose connection test and clipboard paste');
+assert(appSource.includes("page==='Hub'")&&appSource.includes('tileGrid')&&appSource.includes('optionsBottomBar'),'options must use a tile hub and sticky save/cancel bar');
+assert(fs.readFileSync(path.join(__dirname,'..','src/persistence/storage.js'),'utf8').includes('expo-secure-store'),'API key must be stored securely');
 assert(appSource.includes('buildTaleMap')&&appSource.includes("fresh.nodeId='tale_0'"),'new runs must start on the generated tale map');
 assert(appSource.includes('Object.keys(THEMES)'),'all available themes must be selectable');
 assert(appSource.includes('sanityWarp=useRef')&&appSource.includes('damageFlash=useRef'),'sanity and damage animations must have initialized animated values');
