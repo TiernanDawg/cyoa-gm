@@ -90,7 +90,7 @@ export default function App(){
    const runId=++op.current;Keyboard.dismiss();setStatus('');const fresh=createInitialState();const selected=settings.storyStyle==='Randomize'?randomStyle():settings.storyStyle;
    const chosenPremise=selectedPremise||taleCards[0]||null;const chosenSetting=customPrompt||(chosenPremise?.setting||'');
    setState(fresh);setStyle(selected);setPremise(chosenSetting);setRoll(null);setScreen('loading');setBusy(true);
-   const seed=settings.seed||String(Math.floor(Math.random()*999999)+1);const tale=pickTale(selected,seed,chosenSetting);
+   const seed=settings.seed||String(Math.floor(Math.random()*999999)+1);let tale=pickTale(selected,seed,chosenSetting);if(useCustomStory)tale={...tale,subtitle:'Your Custom Tale',setting:'the situation described in your custom story prompt',threat:'the threat described in your custom story prompt',secretTruth:'the explanation will emerge as your choices shape this custom story',storyBible:{...(tale.storyBible||{}),customPremise:customPrompt,setting:customPrompt,threatRule:'Outcomes follow the game rules and dice results; the narrative adapts to the custom premise.'}};
    let opening=tale.opening||OPENINGS[selected]||OPENINGS['Dark Folktale'];
    if(useCustomStory){try{opening=await generateOpening(opening,settings.apiKey,settings.model,settings.provider,'',selected,customPrompt);}catch(error){if(runId===op.current){setBusy(false);setScreen('setup');setStatus('Could not generate the custom story: '+String(error?.message||error).slice(0,220));}return;}}
    if(runId!==op.current)return;
