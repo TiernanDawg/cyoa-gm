@@ -1,21 +1,22 @@
 import { MAP } from '../game/map';
 export const DEFAULT_FREE_MODEL='auto';
 const GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models';
-let modelCache={key:'',expires:0,models:[]};
-export async function listAvailableModels(key){
- const apiKey=String(key||'').trim();if(!apiKey)throw Error('Add your Google AI Studio API key first.');
- if(modelCache.key===apiKey&&modelCache.expires>Date.now()&&modelCache.models.length)return modelCache.models;
- let response,data;
- try{response=await fetch(GEMINI_URL+'?pageSize=100',{headers:{'x-goog-api-key':apiKey}});const text=await response.text();data=JSON.parse(text||'{}');}
- catch(e){throw Error('Could not reach Google Gemini. Check your internet connection and try again.');}
- if(!response.ok){const detail=String(data?.error?.message||'').trim();if(response.status===400)throw Error('Google rejected the API key request'+(detail?': '+detail.slice(0,180):'.'));if(response.status===401||response.status===403)throw Error('Google rejected this API key or it lacks Gemini API access'+(detail?': '+detail.slice(0,180):'.'));if(response.status===429)throw Error('Google model discovery is rate-limited. Wait a moment and retry.');throw Error('Google model discovery failed (HTTP '+response.status+')'+(detail?': '+detail.slice(0,180):'.'));}
- const models=(Array.isArray(data.models)?data.models:[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes('generateContent')&&/^models\/gemini-/i.test(String(m.name||''))).map(m=>String(m.name).replace(/^models\//,'')).filter(Boolean);
- if(!models.length)throw Error('This key returned no Gemini models that support text generation. Check Gemini API access in Google AI Studio.');
+const GROQ_URL='https://api.groq.com/openai/v1';
+let modelCache={key:'',provider:'',expires:0,models:[]};
+const providerName=provider=>provider==='groq'?'Groq':'Google Gemini';
+export async function listAvailableModels(key,provider='google'){
+ const apiKey=String(key||'').trim();if(!apiKey)throw Error('Add your '+(provider==='groq'?'Groq':'Google AI Studio')+' API key first.');
+ if(modelCache.key===apiKey&&modelCache.provider===provider&&modelCache.expires>Date.now()&&modelCache.models.length)return modelCache.models;
+ const url=provider==='groq'?GROQ_URL+'/models':GEMINI_URL+'?pageSize=100',headers=provider==='groq'?{Authorization:'Bearer '+apiKey}:{'x-goog-api-key':apiKey};let response,data;
+ try{response=await fetch(url,{headers});const text=await response.text();data=JSON.parse(text||'{}');}catch(e){throw Error('Could not reach '+providerName(provider)+'. Check your internet connection and try again.');}
+ if(!response.ok){const detail=String(data?.error?.message||'').trim();if(response.status===401||response.status===403)throw Error(providerName(provider)+' rejected this API key or it lacks API access'+(detail?': '+detail.slice(0,180):'.'));if(response.status===429)throw Error(providerName(provider)+' model discovery is rate-limited. Wait a moment and retry.');throw Error(providerName(provider)+' model discovery failed (HTTP '+response.status+')'+(detail?': '+detail.slice(0,180):'.'));}
+ let models=provider==='groq'?(Array.isArray(data.data)?data.data.filter(m=>m.active!==false&&/chat|text|llama|gemma|qwen|gpt-oss/i.test(String(m.id||''))).map(m=>String(m.id)):[]):(Array.isArray(data.models)?data.models.filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes('generateContent')&&/^models\/gemini-/i.test(String(m.name||''))).map(m=>String(m.name).replace(/^models\//,'')):[]);
+ models=[...new Set(models)].filter(Boolean);if(!models.length)throw Error('No compatible text-generation models were returned for this '+providerName(provider)+' key.');
  const stable=models.filter(m=>!/preview|experimental|exp-/i.test(m));const pool=stable.length?stable:models;
- pool.sort((a,b)=>{const score=m=>/flash-lite/i.test(m)?300:/flash/i.test(m)?200:/pro/i.test(m)?100:0;return score(b)-score(a)||b.localeCompare(a,undefined,{numeric:true,sensitivity:'base'});});
- modelCache={key:apiKey,expires:Date.now()+600000,models:pool};return pool;
+ pool.sort((a,b)=>{const score=m=>provider==='groq'?(/llama-3\.3-70b-versatile|openai\/gpt-oss-20b/i.test(m)?300:/llama-3\.1-8b-instant/i.test(m)?250:/llama/i.test(m)?200:/gemma/i.test(m)?100:0):(/flash-lite/i.test(m)?300:/flash/i.test(m)?200:/pro/i.test(m)?100:0);return score(b)-score(a)||b.localeCompare(a,undefined,{numeric:true,sensitivity:'base'});});
+ modelCache={key:apiKey,provider,expires:Date.now()+600000,models:pool};return pool;
 }
-export async function resolveModel(key,preferred='auto'){const models=await listAvailableModels(key);const wanted=String(preferred||'auto').replace(/^models\//,'');return wanted!=='auto'&&models.includes(wanted)?wanted:models[0];}
+export async function resolveModel(key,preferred='auto',provider='google'){const models=await listAvailableModels(key,provider);const wanted=String(preferred||'auto').replace(/^models\//,'');return wanted!=='auto'&&models.includes(wanted)?wanted:models[0];}
 const BANNED=[/chill runs down your spine/i,/the air is thick/i,/flickering shadows/i,/darkness swallowed/i,/you swallow hard/i,/heart pounds in your chest/i,/little did you know/i,/\bsuddenly\b/i,/an eerie silence/i,/sent shivers/i,/hairs on the back of your neck/i,/sense of dread/i,/dimly lit/i,/damp earth/i];
 const FORMULA=/^(you push open the cracked door|you descend into (the )?(dark )?(underground )?passage|you enter the underground passage)/i;
 export function normalizeNarrationText(text=''){return String(text).replace(/<[^>]*>/g,' ').replace(/[*_#`]/g,'').replace(/\b(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/gi,(_,h,m,a)=>h+' '+m+' '+a).replace(/\b(\d{1,2})%/g,'$1 percent').replace(/\b911\b/g,'nine one one').replace(/\.{3,}/g,'…').replace(/\s+/g,' ').trim();}
