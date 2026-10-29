@@ -51,11 +51,12 @@ assert(outcomes.has('critical_failure')&&outcomes.has('critical_success'),'simul
 
 const narratorSource=fs.readFileSync(path.join(__dirname,'..','src/llm/narrator.js'),'utf8');
 assert(narratorSource.includes("DEFAULT_FREE_MODEL='auto'"),'Google Gemini model must default to automatic selection');
-assert(narratorSource.includes('listAvailableModels')&&narratorSource.includes('supportedGenerationMethods'),'Gemini models must be discovered from the API key');
+assert(narratorSource.includes('listAvailableModels')&&narratorSource.includes('supportedGenerationMethods')&&narratorSource.includes("provider='google'"),'Gemini models must be discovered from the API key');
+assert(narratorSource.includes('api.groq.com/openai/v1')&&narratorSource.includes("provider==='groq'"),'Groq model discovery and chat completions must be supported');
 assert(narratorSource.includes('resolveModel'),'API calls must resolve an available model automatically');
-assert(!narratorSource.includes('openrouter.ai')&&!narratorSource.includes('api.openai.com'),'only Google endpoints may exist');
+assert(!narratorSource.includes('openrouter.ai')&&!narratorSource.includes('api.openai.com'),'only configured supported provider endpoints may exist');
 const appSource=fs.readFileSync(path.join(__dirname,'..','App.js'),'utf8');
-assert(appSource.includes('Google AI Studio API key'),'app must ask for a Google key');
+assert(appSource.includes('Google AI Studio API key')&&appSource.includes('Groq API key'),'app must support both Gemini and Groq keys');
 assert(appSource.includes('TEST CONNECTION')&&appSource.includes('Paste API key'),'AI settings must expose connection test and clipboard paste');
 assert(appSource.includes("page==='Hub'")&&appSource.includes('tileGrid')&&appSource.includes('optionsBottomBar'),'options must use a tile hub and sticky save/cancel bar');
 assert(fs.readFileSync(path.join(__dirname,'..','src/persistence/storage.js'),'utf8').includes('expo-secure-store'),'API key must be stored securely');
@@ -65,9 +66,11 @@ assert(appSource.includes('sanityWarp=useRef')&&appSource.includes('damageFlash=
 assert(appSource.includes('CARRIED ITEMS')&&appSource.includes('DROP'),'inventory must be inspectable and allow dropping carried items');
 const themeSource=fs.readFileSync(path.join(__dirname,'..','src/ui/theme.js'),'utf8');
 for(const name of ['Wood','Dashboard','PlayStation','Nintendo','Xbox','Light','OLED'])assert(new RegExp('\\b'+name+':').test(themeSource),'missing selectable theme '+name);
-assert(!appSource.includes('OPENROUTER API KEY')&&!appSource.includes('openrouter/free'),'non-Google AI must be removed from UI');
+assert(!appSource.includes('OPENROUTER API KEY')&&!appSource.includes('openrouter/free'),'obsolete OpenRouter settings must remain removed');
+assert(appSource.includes("['groq','google']")&&appSource.includes('Alert.alert(label'),'long option lists must use compact dropdown selectors');
+assert(fs.readFileSync(path.join(__dirname,'..','src/persistence/storage.js'),'utf8').includes('groq-api-key'),'Groq key must be stored separately in secure storage');
 const voice=load('src/voice/controller.js',['createVoiceState','voiceTransition','restoreVoicePosition','audioCacheKey']);
 let vs=voice.createVoiceState({provider:'premium',queue:['a','b']});vs=voice.voiceTransition(vs,'play',{passageId:'p1',queue:['a','b']});vs=voice.voiceTransition(vs,'loaded');assert.strictEqual(vs.status,'playing');
 vs=voice.voiceTransition(vs,'background');assert.strictEqual(vs.status,'playing');vs=voice.voiceTransition({...vs,provider:'system'},'background');assert.strictEqual(vs.status,'paused');vs=voice.voiceTransition(vs,'foreground');assert.strictEqual(vs.status,'playing');
 const restored=voice.restoreVoicePosition({passageId:'p',chunkIndex:2,sentenceIndex:3});assert.strictEqual(restored.passageId,'p');assert.strictEqual(restored.chunkIndex,2);assert.strictEqual(restored.sentenceIndex,3);assert(voice.audioCacheKey('hello','voice','style'));
-console.log('Rules, realism, tale generation, Google free-tier guard, voice state machine, achievement tests and 1,000-roll simulation passed.');
+console.log('Rules, realism, tale generation, Gemini and Groq provider support, voice state machine, achievement tests and 1,000-roll simulation passed.');
