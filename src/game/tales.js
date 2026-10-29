@@ -37,30 +37,36 @@ const LOCATION_BEATS = [
   ['Confrontation','The threat finally responds to your presence instead of merely following.'],
   ['Cost','The safest option requires sacrificing something you have protected.'],
   ['Revelation','The clues form a coherent explanation, though it is worse than ignorance.'],
-  ['Final Approach','Three routes remain: escape, pursue the truth, or risk everything.']
+  ['Final Approach','Three routes remain: escape, pursue the truth, or risk everything.'],
+  ['Aftermath','The immediate danger eases, but the price of your choices is now visible.'],
+  ['The Missing Record','A final record contradicts one important assumption about the threat.'],
+  ['The Long Way Out','The route toward safety requires one last deliberate risk.'],
+  ['Last Witness','Someone who stayed silent finally gives a direct answer.'],
+  ['Point of No Return','The situation can no longer be contained by hiding or waiting.'],
+  ['Final Reckoning','The evidence, the threat, and your earlier decisions converge.']
 ];
 const ENDING_BEATS = {
   escape: {title:'A Narrow Escape',scene:'You force your way into open air. The world appears ordinary again, but one small detail proves the place has not finished with you.'},
   truth: {title:'The Truth Beneath',scene:'The final evidence fits together. You understand what happened and why the place kept you alive long enough to discover it. Understanding is not the same as safety.'},
   sacrifice: {title:'The Price',scene:'You stop the immediate danger at a cost that cannot be reversed. The silence afterward feels earned, but it does not feel like victory.'}
 };
-export function buildTaleMap(tale) {
+export function buildTaleMap(tale, options = {}) {\n  const requestedLength = options.length || tale.length || 'Standard';\n  const beatCount = requestedLength === 'Short' ? 6 : (requestedLength === 'Long' || requestedLength === 'Endless') ? LOCATION_BEATS.length : Math.min(12, LOCATION_BEATS.length);
   const map = {};
   const title = tale.subtitle || tale.style;
   const setting = tale.setting || 'the sealed place';
   const threat = tale.threat || 'a sound from the dark';
   const truth = tale.secretTruth || 'the place is keeping a record of you';
-  for (let i=0;i<LOCATION_BEATS.length;i++) {
+  for (let i=0;i<beatCount;i++) {
     const [beat,detail]=LOCATION_BEATS[i];
-    const nextA = i===11 ? 'tale_ending_escape' : 'tale_'+(i+1);
-    const nextB = i===11 ? 'tale_ending_truth' : 'tale_'+Math.min(11,i+2);
-    const nextC = i===11 ? 'tale_ending_sacrifice' : 'tale_'+Math.min(11,i+3);
+    const nextA = i===beatCount-1 ? 'tale_ending_escape' : 'tale_'+(i+1);
+    const nextB = i===beatCount-1 ? 'tale_ending_truth' : 'tale_'+Math.min(beatCount-1,i+2);
+    const nextC = i===beatCount-1 ? 'tale_ending_sacrifice' : 'tale_'+Math.min(beatCount-1,i+3);
     map['tale_'+i] = {
       scene: (i===0?(tale.opening||'')+' ':'')+title+'. '+beat+'. '+detail+' You are inside '+setting+'. '+(i%3===0?'Nearby, '+threat+'. ':i%3===1?'A clue points toward the explanation: '+truth+'. ':'Your earlier decisions have changed what feels safe. ')+'The next move must address what is actually here. '+(i%4===0?'You can see a reachable exit marker and fresh evidence. ':i%4===1?'A loose panel and a damaged light are within reach. ':i%4===2?'The route narrows beside a clear source of sound. ':'A dropped object lies near the only visible doorway. '),
       choices: [
-        {text:i===11?'Reach the exit route described by the evidence.':i%4===0?'Inspect the fresh evidence before committing to a route.':i%4===1?'Check the loose panel and the damaged light.':i%4===2?'Trace the sound without leaving cover.':'Examine the dropped object and nearby doorway.',next:nextA,dc:10+i%4,stat:'sanity',risk:'low'},
-        {text:i===11?'Follow the clues and confront the truth.':i%3===0?'Move toward the threat while keeping an escape route.':i%3===1?'Take the narrow route and watch your footing.':'Test the doorway and keep the evidence in sight.',next:nextB,dc:13+i%5,stat:i%2?'health':'sanity',risk:'moderate'},
-        {text:i===11?'Make a final, costly attempt to change the outcome.':i%3===0?'Use a carried item to create a safer opening.':i%3===1?'Force a way past the obstruction.':'Risk a quick move before the sound gets closer.',next:nextC,dc:16+i%4,stat:'health',risk:'high'}
+        {text:i===beatCount-1?'Reach the exit route described by the evidence.':i%4===0?'Inspect the fresh evidence before committing to a route.':i%4===1?'Check the loose panel and the damaged light.':i%4===2?'Trace the sound without leaving cover.':'Examine the dropped object and nearby doorway.',next:nextA,dc:10+i%4,stat:'sanity',risk:'low'},
+        {text:i===beatCount-1?'Follow the clues and confront the truth.':i%3===0?'Move toward the threat while keeping an escape route.':i%3===1?'Take the narrow route and watch your footing.':'Test the doorway and keep the evidence in sight.',next:nextB,dc:13+i%5,stat:i%2?'health':'sanity',risk:'moderate'},
+        {text:i===beatCount-1?'Make a final, costly attempt to change the outcome.':i%3===0?'Use a carried item to create a safer opening.':i%3===1?'Force a way past the obstruction.':'Risk a quick move before the sound gets closer.',next:nextC,dc:16+i%4,stat:'health',risk:'high'}
       ]
     };
   }
