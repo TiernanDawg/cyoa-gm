@@ -12,7 +12,8 @@ function rng(seed){let x=seed>>>0;return()=>{x=(x+0x6D2B79F5)|0;let t=Math.imul(
 export function pickTale(style,seed='1',premise=''){
  const actual=TALE_STYLES.includes(style)?style:TALE_STYLES[hash(String(seed))%TALE_STYLES.length];
  const random=rng(hash(String(seed)+actual+premise)),custom=String(premise||'').trim(),selected=PREMISES.find(p=>p.setting===custom||p.id===custom)||PREMISES[Math.floor(random()*PREMISES.length)];
- const opening='The '+selected.setting.replace(/^a |^an |^the /i,'')+' is quiet at this hour. '+selected.wrongDetail+' Your phone has a working flashlight and '+(4+Math.floor(random()*77))+'% battery. You check the nearest way out. Then you notice the same detail somewhere it cannot be.';
+ const battery=24+Math.floor(random()*70);
+ const opening='It is '+selected.time+'. You are at '+selected.setting+'. '+selected.wrongDetail+' You check your phone: '+battery+' percent battery, one bar of signal. The place should be empty. You look for the nearest exit, then notice a second detail that does not fit: '+selected.truth.split(/[.!?]/)[0].toLowerCase()+'.';
  return {style:actual,subtitle:custom&&!PREMISES.some(p=>p.setting===custom||p.id===custom)?custom.slice(0,70):selected.title,seed:String(seed),premiseId:selected.id,setting:selected.setting,threat:selected.threatType,wrongDetail:selected.wrongDetail,secretTruth:selected.truth,storyBible:{protagonistSituation:'Alone after hours, with a phone and ordinary tools.',setting:selected.setting,wrongDetail:selected.wrongDetail,truth:selected.truth,people:[{name:'Mara',motive:'wants to keep the incident quiet'},{name:'Eli',motive:'needs someone to verify what happened'}],threatRule:'The threat only acts when the wrong detail is ignored twice.',midStoryTurn:'An early clue is revealed to have been deliberately planted.',endings:['escape','truth','sacrifice']},motifs:[selected.setting,selected.wrongDetail,'a record with missing lines'],npcs:['Mara, a reluctant witness','Eli, who needs proof'],opening,endingConditions:['discover the central truth','reach a viable exit','lose health or sanity beyond recovery']};
 }
 export function storyChoices(tale,nodeId,turn=0){
@@ -54,23 +55,47 @@ export function buildTaleMap(tale, options = {}) {
   const requestedLength = options.length || tale.length || 'Standard';
   const beatCount = requestedLength === 'Short' ? 6 : (requestedLength === 'Long' || requestedLength === 'Endless') ? LOCATION_BEATS.length : Math.min(12, LOCATION_BEATS.length);
   const map = {};
-  const title = tale.subtitle || tale.style;
-  const setting = tale.setting || 'the sealed place';
-  const threat = tale.threat || 'a sound from the dark';
-  const truth = tale.secretTruth || 'the place is keeping a record of you';
+  const title = tale.subtitle || tale.style || 'The Incident';
+  const setting = tale.setting || 'the location';
+  const wrongDetail = tale.wrongDetail || 'Something has been moved recently.';
+  const threat = tale.threat || 'an unexplained presence';
+  const truth = tale.secretTruth || 'someone has concealed what happened here';
+  const story = [
+    {heading:'Arrival', prose:'You take a moment to get your bearings. The nearest public exit is visible, but reaching it means crossing the open area. Nothing moves. That should be reassuring. It is not.'},
+    {heading:'The First Clue', prose:'The detail is not random. Someone has handled it recently, and the marks point toward a place people have been avoiding.'},
+    {heading:'A Way Through', prose:'You move carefully. The route is narrow, but there is enough room to turn back. You keep the exit in sight.'},
+    {heading:'A Witness', prose:'A voice answers from nearby. The person gives you one useful fact, then changes the subject when you ask how they know.'},
+    {heading:'A Useful Find', prose:'You find something ordinary that could help: a key, a working light, or a record someone meant to hide. You check it before relying on it.'},
+    {heading:'The Wrong Exit', prose:'The route marked as an exit leads somewhere unexpected. You stop before committing. The signs have been altered, not simply damaged.'},
+    {heading:'The Warning', prose:'A message gives a specific warning about what happens next. It is too precise to dismiss, but you cannot yet tell who left it.'},
+    {heading:'The Hidden Route', prose:'A second route appears behind the obvious one. It is less convenient, but it explains why the first route was left open.'},
+    {heading:'The Threat Responds', prose:'The presence is no longer content to remain at a distance. You hear it react to your movement. You have seconds to choose whether to hide, retreat, or confront the problem.'},
+    {heading:'The Cost', prose:'You can keep what you have found, or use it to make a safer route. You cannot do both. The decision has a real cost.'},
+    {heading:'The Explanation', prose:'The clues now point to one explanation: '+truth+'. It accounts for the evidence, though it does not make the situation safe.'},
+    {heading:'The Final Approach', prose:'You have enough information to act. One route offers the best chance of getting out. Another could prove what happened. The third is dangerous, but may prevent it happening again.'},
+    {heading:'Aftermath', prose:'The immediate danger eases. You check your injuries, your phone, and what you managed to keep. The details matter now.'},
+    {heading:'The Missing Record', prose:'One record is missing from the sequence. The gap is deliberate. Filling it changes who you believe and what you think the threat wants.'},
+    {heading:'The Long Way Out', prose:'The direct route is no longer safe. You take the longer way, checking each turn against what you know rather than trusting the signs.'},
+    {heading:'The Last Witness', prose:'The person who avoided your questions finally gives a straight answer. Their account confirms one clue and overturns another.'},
+    {heading:'No More Hiding', prose:'Waiting will not solve this. The situation is moving, and you must decide what matters most: your escape, the truth, or stopping the threat.'},
+    {heading:'Final Reckoning', prose:'Every earlier decision has led here. The evidence, the remaining route, and the threat are all in front of you. There is no safe way to avoid choosing.'}
+  ];
+  const titleLine = 'CASE: '+title+'.';
   for (let i=0;i<beatCount;i++) {
-    const [beat,detail]=LOCATION_BEATS[i];
-    const nextA = i===beatCount-1 ? 'tale_ending_escape' : 'tale_'+(i+1);
-    const nextB = i===beatCount-1 ? 'tale_ending_truth' : 'tale_'+Math.min(beatCount-1,i+2);
-    const nextC = i===beatCount-1 ? 'tale_ending_sacrifice' : 'tale_'+Math.min(beatCount-1,i+3);
-    map['tale_'+i] = {
-      scene: (i===0?(tale.opening||'')+' ':'')+title+'. '+beat+'. '+detail+' You are inside '+setting+'. '+(i%3===0?'Nearby, '+threat+'. ':i%3===1?'A clue points toward the explanation: '+truth+'. ':'Your earlier decisions have changed what feels safe. ')+'The next move must address what is actually here. '+(i%4===0?'You can see a reachable exit marker and fresh evidence. ':i%4===1?'A loose panel and a damaged light are within reach. ':i%4===2?'The route narrows beside a clear source of sound. ':'A dropped object lies near the only visible doorway. '),
-      choices: [
-        {text:i===beatCount-1?'Reach the exit route described by the evidence.':i%4===0?'Inspect the fresh evidence before committing to a route.':i%4===1?'Check the loose panel and the damaged light.':i%4===2?'Trace the sound without leaving cover.':'Examine the dropped object and nearby doorway.',next:nextA,dc:10+i%4,stat:'sanity',risk:'low'},
-        {text:i===beatCount-1?'Follow the clues and confront the truth.':i%3===0?'Move toward the threat while keeping an escape route.':i%3===1?'Take the narrow route and watch your footing.':'Test the doorway and keep the evidence in sight.',next:nextB,dc:13+i%5,stat:i%2?'health':'sanity',risk:'moderate'},
-        {text:i===beatCount-1?'Make a final, costly attempt to change the outcome.':i%3===0?'Use a carried item to create a safer opening.':i%3===1?'Force a way past the obstruction.':'Risk a quick move before the sound gets closer.',next:nextC,dc:16+i%4,stat:'health',risk:'high'}
-      ]
-    };
+    const beat=story[i];
+    const nextA=i===beatCount-1?'tale_ending_escape':'tale_'+(i+1);
+    const nextB=i===beatCount-1?'tale_ending_truth':'tale_'+Math.min(beatCount-1,i+2);
+    const nextC=i===beatCount-1?'tale_ending_sacrifice':'tale_'+Math.min(beatCount-1,i+3);
+    const opening=i===0?(tale.opening||'')+' ':'';
+    const clue=i===1?'The detail you noticed was: '+wrongDetail+' ':i===10?'The evidence points to this explanation: '+truth+' ':'';
+    const threatLine=i===8?'You can hear '+threat+' nearby. ':'';
+    const scene=[opening,titleLine,beat.heading+'.',beat.prose,clue,threatLine,'You are still at '+setting+'.'].filter(Boolean).join(' ');
+    const choices = [
+      {text:i===beatCount-1?'Take the route with the clearest chance of escape.':i%3===0?'Check the clue closely before moving on.':i%3===1?'Compare the evidence with the warning you found.':'Look for a detail that confirms what you have learned.',next:nextA,dc:10+i%4,stat:'sanity',risk:'low'},
+      {text:i===beatCount-1?'Follow the evidence and find out who caused this.':i%3===0?'Move toward the last place the witness described.':i%3===1?'Follow the safer route, keeping the exit behind you.':'Approach the source of the sound without losing your way back.',next:nextB,dc:13+i%5,stat:'health',risk:'moderate'},
+      {text:i===beatCount-1?'Use what you have to stop the threat, even if it costs you.':i%3===0?'Use an available object to create a safer opening.':i%3===1?'Take the difficult route before it closes.':'Make a quick move while the way is still clear.',next:nextC,dc:16+i%4,stat:'health',risk:'high'}
+    ];
+    map['tale_'+i]={scene:scene.replace(/\s+/g,' ').trim(),choices};
   }
   for (const [key,ending] of Object.entries(ENDING_BEATS)) map['tale_ending_'+key]={scene:ending.scene+' The case file is marked: '+ending.title+'.',choices:[]};
   return map;
