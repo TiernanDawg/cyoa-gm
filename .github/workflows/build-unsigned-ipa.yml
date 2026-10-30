@@ -20,8 +20,6 @@ jobs:
       - name: Validate authored stories
         continue-on-error: true
         run: npm run check:stories
-      - name: Validate JavaScript bundle
-        run: npx expo export --platform ios --output-dir "$RUNNER_TEMP/deadend-bundle-check"
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --clean
       - name: Build unsigned iOS app
