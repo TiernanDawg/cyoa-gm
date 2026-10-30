@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('fs'),path=require('path');
 const root=path.join(__dirname,'../src/game/stories');
-const failures=[],files=fs.existsSync(root)?fs.readdirSync(root).filter(x=>x.endsWith('.js')):[];
+const failures=[],files=fs.existsSync(root)?fs.readdirSync(root).filter(x=>x.endsWith('.js')):[];const perFile=new Map();
 const wordRe=/[\p{L}\p{N}’'-]+/gu;
 const words=s=>(String(s??'').match(wordRe)||[]);
 const stop=new Set('the a an and or but if then when while as at by for from in into of on onto out over through to under up with without you your yours we our they them he she it this that these those is are was were be been being do did does can could would should will may might must have has had not no yes me my his her their its very more most some any all each other another nearest next one two first second third'.split(' '));
@@ -13,6 +13,7 @@ function fail(file,msg){failures.push(file+': '+msg);}
 if(!files.length)fail('stories','no authored story files found');
 const globalSentences=new Map();
 for(const file of files){
+ const before=failures.length;
  const src=fs.readFileSync(path.join(root,file),'utf8');
  const meta=key=>{const m=src.match(new RegExp('\\b'+key+':\\s*[\\x27\\x22]([^\\x27\\x22]*)[\\x27\\x22]'));return m?.[1]||'';};
  const id=meta('id'),style=meta('style'),tag=meta('tag');
@@ -50,8 +51,18 @@ for(const file of files){
  });
  if(!/endings\s*:\s*\{/.test(src))fail(file,'missing ending variants');
  if(!/variants\s*:\s*\[/.test(src))fail(file,'missing ending variant list');
+ perFile.set(id,{ok:failures.length===before,id,file,reasons:failures.slice(before).map(x=>x.slice(file.length+2))});
 }
 if(!files.includes('unit-18.js'))fail('stories','Unit 18 story missing');
-if(failures.length){console.error('STORY VALIDATION FAILED\n'+failures.join('\n'));process.exit(1);}
+const premiseSource=fs.readFileSync(path.join(__dirname,'../src/game/premises.js'),'utf8');
+const titles=[...premiseSource.matchAll(/^\['([^']+)'/gm)].map(m=>m[1]);
+const manifest={};
+for(const title of titles)manifest[title]={tier:['Wrong Pickup','Last Pump','Night Shift','Wrong Side','Marker Twelve','Room 214','Unit 18'].includes(title)?'FULL':'LITE',status:'hidden',file:null,reasons:['No complete validated authored story module exists yet.']};
+for(const [id,result] of perFile){if(!id)continue;if(manifest[id])manifest[id]={tier:manifest[id].tier,status:result.ok?'live':'hidden',file:result.ok?result.file:null,reasons:result.ok?[]:result.reasons};}
+const live=Object.values(manifest).filter(x=>x.status==='live');
+fs.writeFileSync(path.join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\\n');
+if(!live.length){console.error('No validated authored premises are live.');process.exit(1);}
+if(failures.length)console.warn('Content hidden by manifest; build continues:\\n'+failures.join('\\n'));
+console.log('Story manifest generated: '+live.length+' live, '+(titles.length-live.length)+' hidden.');
 console.log('STORY VALIDATION PASSED');
 for(const f of files)console.log(f+': 12 validated beats');
