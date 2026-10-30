@@ -30,3 +30,5 @@ export function buildTaleMap(tale,options={}){
  }
  return map;
 }
+
+// Authored story catalog is intentionally limited to validated modules.
