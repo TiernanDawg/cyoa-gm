@@ -7,27 +7,21 @@
   },
   "Wrong Pickup": {
     "tier": "FULL",
-    "status": "hidden",
-    "file": null,
-    "reasons": [
-      "No complete validated authored story module exists yet."
-    ]
+    "status": "live",
+    "file": "wrong-pickup.js",
+    "reasons": []
   },
   "Last Pump": {
     "tier": "FULL",
-    "status": "hidden",
-    "file": null,
-    "reasons": [
-      "No complete validated authored story module exists yet."
-    ]
+    "status": "live",
+    "file": "last-pump.js",
+    "reasons": []
   },
   "Night Shift": {
     "tier": "FULL",
-    "status": "hidden",
-    "file": null,
-    "reasons": [
-      "No complete validated authored story module exists yet."
-    ]
+    "status": "live",
+    "file": "night-shift.js",
+    "reasons": []
   },
   "Closing Time": {
     "tier": "LITE",
