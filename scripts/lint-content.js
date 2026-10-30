@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert'),vm=require('vm');
 const file=path.join(__dirname,'..','src/game/premises.js');
 let source=fs.readFileSync(file,'utf8');
-source=source.replace("import premiseManifest from './stories/manifest.json';", "const premiseManifest=JSON.parse(fs.readFileSync(path.join(__dirname,'..','src/game/stories/manifest.json'),'utf8'));");
+source=source.replace(/^import premiseManifest from ['\"]\.\/stories\/manifest\.json['\"];?\s*/m, "const premiseManifest=JSON.parse(fs.readFileSync(path.join(__dirname,'../src/game/stories/manifest.json'),'utf8'));\n");
 source=source.replace(/^export const /gm,'const ').replace(/^export function /gm,'function ');
 source+='\nmodule.exports={PREMISES,THREAT_TYPES,premiseShuffle};';
 const sandbox={module:{exports:{}},exports:{},Math,Set,fs,path,__dirname};
