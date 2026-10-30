@@ -15,7 +15,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Validate authored stories\n        run: npm run check:stories\n      - name: Generate DeadEnd app icon
+      - name: Validate authored stories
+        run: npm run check:stories
+      - name: Generate DeadEnd app icon
         run: node scripts/generate-icon.js
       - name: Install dependencies
         run: npm install
