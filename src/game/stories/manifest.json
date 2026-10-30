@@ -1,0 +1,368 @@
+{
+  "Unit 18": {
+    "tier": "FULL",
+    "status": "live",
+    "file": "unit-18.js",
+    "reasons": []
+  },
+  "Wrong Pickup": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Last Pump": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Night Shift": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Closing Time": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Wrong Side": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Marker Twelve": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "3:07": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Level B2": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "The Usual": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Recalculating": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "One More Chair": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Whiteout": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Between Floors": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Every Door": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Dead Air": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Routine Stop": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Last Exit": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Spin Cycle": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "After Hours": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Room 214": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Final Stop": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "High Tide": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Porch Light": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Night Kennel": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Fence Line": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Last Login": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Platform Change": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Inventory Night": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Generator": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Gate Closed": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Table for One": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Morning Bell": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Ticketed": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Weight Limit": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Housekeeping": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Aisle Nine": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Site 6": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Waterline": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Waiting Room": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Bilge Alarm": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Probate": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Road Closed": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Cold Rack": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Volunteer Roster": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  },
+  "Safety Fence": {
+    "tier": "LITE",
+    "status": "hidden",
+    "file": null,
+    "reasons": [
+      "No complete validated authored story module exists yet."
+    ]
+  }
+}
