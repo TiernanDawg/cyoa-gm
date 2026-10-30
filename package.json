@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "prebuild": "expo prebuild",
     "test": "node scripts/test-rules.js && node scripts/lint-content.js",
+    "check:stories": "node scripts/check-stories.js",
     "audio:generate": "node scripts/generate-audio.js",
     "audio:verify": "node scripts/generate-audio.js --verify",
     "postinstall": "node scripts/generate-audio.js",
