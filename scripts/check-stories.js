@@ -60,9 +60,9 @@ const manifest={};
 for(const title of titles)manifest[title]={tier:['Wrong Pickup','Last Pump','Night Shift','Wrong Side','Marker Twelve','Room 214','Unit 18'].includes(title)?'FULL':'LITE',status:'hidden',file:null,reasons:['No complete validated authored story module exists yet.']};
 for(const [id,result] of perFile){if(!id)continue;if(manifest[id])manifest[id]={tier:manifest[id].tier,status:result.ok?'live':'hidden',file:result.ok?result.file:null,reasons:result.ok?[]:result.reasons};}
 const live=Object.values(manifest).filter(x=>x.status==='live');
-fs.writeFileSync(path.join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\\n');
+fs.writeFileSync(path.join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 if(!live.length){console.error('No validated authored premises are live.');process.exit(1);}
-if(failures.length)console.warn('Content hidden by manifest; build continues:\\n'+failures.join('\\n'));
+if(failures.length)console.warn('Content hidden by manifest; build continues:\n'+failures.join('\n'));
 console.log('Story manifest generated: '+live.length+' live, '+(titles.length-live.length)+' hidden.');
 console.log('STORY VALIDATION PASSED');
 for(const f of files)console.log(f+': 12 validated beats');
