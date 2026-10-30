@@ -46,16 +46,8 @@ const ROWS = [
 ['Volunteer Roster','The sign-in sheet lists you in someone else’s handwriting.','a community meal cleanup in a church basement','9:08 p.m. in October','human','The entry is dated for a night the building was locked.','A volunteer is fabricating an alibi.'],
 ['Safety Fence','A warning light flashes from the wrong side of the fence.','a closed quarry beside a public walking path','8:57 p.m. in September','environmental survival','The beacon works despite disconnected mains.','Someone is operating equipment illegally after hours.']
 ];
-export const PREMISES = ROWS.map(([id,title,setting,time,threatType,wrongDetail,truth]) => ({id,title,setting,time,threatType,wrongDetail,truth,hook:wrongDetail, tone:threatType==='human'?'grounded suspense':'slow-burn suspense'}));
-export const THREAT_TYPES = [...new Set(PREMISES.map(p=>p.threatType))];
+export const PREMISES=ROWS.map(([id,title,setting,time,threatType,wrongDetail,truth])=>({id,title,setting,time,threatType,wrongDetail,truth,hook:wrongDetail,tone:threatType==='human'?'grounded suspense':'slow-burn suspense'}));
+export const AVAILABLE_PREMISES=PREMISES.filter(p=>p.id==='Unit 18');
+export const THREAT_TYPES=[...new Set(PREMISES.map(p=>p.threatType))];
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
-export function premiseShuffle(seed='1',history=[],count=3){
- let x=hash(String(seed))||1;const random=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296;};
- const recent=Array.isArray(history)?history.slice(-10):[];
- const settings=new Set(recent.map(v=>v.setting).filter(Boolean)),threats=new Set(recent.map(v=>v.threatType).filter(Boolean));
- let pool=PREMISES.filter(p=>!settings.has(p.setting)&&!threats.has(p.threatType));
- if(pool.length<count)pool=PREMISES.filter(p=>!settings.has(p.setting));
- if(pool.length<count)pool=PREMISES.slice();
- for(let i=pool.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
- return pool.slice(0,count);
-}
+export function premiseShuffle(seed='1',history=[],count=3){const pool=AVAILABLE_PREMISES.slice();if(!pool.length)return[];let x=hash(String(seed))||1;const random=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296;};for(let i=pool.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,Math.max(1,count));}
