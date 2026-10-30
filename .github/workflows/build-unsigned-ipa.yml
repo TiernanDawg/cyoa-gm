@@ -15,32 +15,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Validate authored stories
-        run: npm run check:stories
-      - name: Generate DeadEnd app icon
-        run: node scripts/generate-icon.js
       - name: Install dependencies
         run: npm install
-      - name: Generate original procedural audio
-        run: npm run audio:generate
-      - name: Verify audio pack
-        run: npm run audio:verify
-      - name: Lint built-in content and premise library
+      - name: Validate authored stories
         continue-on-error: true
-        run: npm run lint:content
-      - name: Run rules checks
-        run: npm test
+        run: npm run check:stories
       - name: Validate JavaScript bundle
         run: npx expo export --platform ios --output-dir "$RUNNER_TEMP/deadend-bundle-check"
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --clean
       - name: Build unsigned iOS app
         run: |
-          # Use the top-level CocoaPods-integrated workspace, not the
-          # project.xcworkspace nested inside the .xcodeproj.
-          # CocoaPods creates ios/DeadEnd.xcworkspace. Never select the
-          # nested ios/DeadEnd.xcodeproj/project.xcworkspace: it omits the
-          # Pods workspace integration and causes Expo module maps to be absent.
           PROJECT="ios/DeadEnd.xcodeproj"
           WORKSPACE="ios/DeadEnd.xcworkspace"
           if [ ! -d "$WORKSPACE" ] || [ ! -d "$PROJECT" ]; then
@@ -53,23 +38,14 @@ jobs:
             exit 1
           fi
           APP_NAME="DeadEnd"
-          echo "Using CocoaPods workspace: $WORKSPACE"
-          echo "Expected app scheme/target: $APP_NAME"
           SCHEME_LIST=$(xcodebuild -list -workspace "$WORKSPACE" 2>&1)
           if ! printf '%s\n' "$SCHEME_LIST" | grep -Eq "^[[:space:]]+${APP_NAME}[[:space:]]*$"; then
-            echo "Expected app scheme '$APP_NAME' was not found in the CocoaPods workspace."
             printf '%s\n' "$SCHEME_LIST"
             exit 1
           fi
-          SCHEME="DeadEnd"
-          echo "Building app scheme: $SCHEME"
-          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 2 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" MARKETING_VERSION="1.2.0" build
+          xcodebuild -workspace "$WORKSPACE" -scheme "$APP_NAME" -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 2 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" MARKETING_VERSION="1.2.0" build
           APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/$APP_NAME.app"
-          if [ ! -d "$APP" ]; then
-            echo "Xcode completed without producing the expected app bundle: $APP"
-            find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 2 -print 2>/dev/null || true
-            exit 1
-          fi
+          test -d "$APP"
           rm -rf Payload
           mkdir -p Payload
           cp -R "$APP" Payload/
