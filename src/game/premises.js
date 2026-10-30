@@ -1,3 +1,4 @@
+import premiseManifest from './stories/manifest.json';
 const ROWS = [
 ['Wrong Pickup','The driver knows a name you never gave them.','a rideshare pickup outside a closed pharmacy','2:14 a.m. in late autumn','human','The destination is a place you never searched.','A cloned passenger account is being used to move people off the record.'],
 ['Last Pump','The pumps are lit at a station marked closed.','a highway gas station beyond the last exit','3:40 a.m. during a summer storm','human','The clerk watches your car before your headlights reach the window.','The station is a meeting point for a local cover-up.'],
@@ -47,7 +48,7 @@ const ROWS = [
 ['Safety Fence','A warning light flashes from the wrong side of the fence.','a closed quarry beside a public walking path','8:57 p.m. in September','environmental survival','The beacon works despite disconnected mains.','Someone is operating equipment illegally after hours.']
 ];
 export const PREMISES=ROWS.map(([id,title,setting,time,threatType,wrongDetail,truth])=>({id,title,setting,time,threatType,wrongDetail,truth,hook:wrongDetail,tone:threatType==='human'?'grounded suspense':'slow-burn suspense'}));
-export const AVAILABLE_PREMISES=PREMISES.filter(p=>p.id==='Unit 18');
+export const AVAILABLE_PREMISES=PREMISES.filter(p=>premiseManifest[p.id]?.status==='live');
 export const THREAT_TYPES=[...new Set(PREMISES.map(p=>p.threatType))];
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 export function premiseShuffle(seed='1',history=[],count=3){const pool=AVAILABLE_PREMISES.slice();if(!pool.length)return[];let x=hash(String(seed))||1;const random=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296;};for(let i=pool.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,Math.max(1,count));}
