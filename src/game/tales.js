@@ -1,6 +1,9 @@
 import { storageUnitStory } from './stories/unit-18';
+import { wrongPickupStory } from './stories/wrong-pickup';
+import { lastPumpStory } from './stories/last-pump';
+import { nightShiftStory } from './stories/night-shift';
 export const TALE_STYLES=['Dark Folktale','Psychological Dread','Cosmic Horror','Gothic Mystery','Occult Conspiracy','Survival Realism'];
-export const AVAILABLE_STORIES=[storageUnitStory];
+export const AVAILABLE_STORIES=[storageUnitStory,wrongPickupStory,lastPumpStory,nightShiftStory];
 export function pickTale(style,seed='1',premise=''){
  const chosen=AVAILABLE_STORIES.find(s=>s.meta?.id===premise||s.meta?.setting===premise)||AVAILABLE_STORIES[0];
  if(!chosen)return null;
